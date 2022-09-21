@@ -8,6 +8,7 @@
     "@project-serum/serum": "^0.13.65",
     "@pythnetwork/client": "^2.8.0",
     "@solana/spl-token": "^0.3.5",
-    "@solana/web3.js": "^1.62.0"
+    "@solana/web3.js": "^1.62.0",
+    "ts-node": "^10.9.1"
   }
 }
