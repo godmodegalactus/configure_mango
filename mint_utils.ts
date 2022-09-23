@@ -61,11 +61,13 @@ export class MintUtils {
     }
 
     public async createTokenAccount(mint: PublicKey, payer: Keypair, owner: PublicKey) {
+        const account = Keypair.generate();
         return splToken.createAccount(
             this.conn,
             payer,
             mint,
             owner,
+            account
         )
     }
 }

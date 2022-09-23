@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor';
 import { Market, OpenOrders } from "@project-serum/serum";
 import * as mango_client_v3 from '@blockworks-foundation/mango-client';
-import { Connection } from '@solana/web3.js';
+import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import * as splToken from '@solana/spl-token';
 import {
   NATIVE_MINT,
@@ -62,6 +62,7 @@ export class MangoUtils {
 
     async createAccountForMango(size : number) : Promise<PublicKey> {
         const lamports = await this.conn.getMinimumBalanceForRentExemption(size);
+        console.log('lamports : {} size : {}', lamports, size)
         let address = Keypair.generate();
 
         const transaction = new Transaction().add(
@@ -83,7 +84,51 @@ export class MangoUtils {
             [this.authority, address],
             { commitment: 'confirmed' },
         );
+
+        // airdrop all mongo accounts 1000 SOLs
+        // const signature =  await this.conn.requestAirdrop(address.publicKey, LAMPORTS_PER_SOL * 1000);
+        // const blockHash = await this.conn.getRecentBlockhash('confirmed');
+        // const blockHeight = await this.conn.getBlockHeight('confirmed')
+        // await this.conn.confirmTransaction({signature: signature, blockhash: blockHash.blockhash, lastValidBlockHeight: blockHeight});
         return address.publicKey;
+    }
+
+    public async createMangoCookie2(tokensList: Array<String>) : Promise<MangoCookie> {
+        const usdc = await this.mintUtils.createMint(6);
+        const msrm = await this.mintUtils.createMint(6);
+        let fee_vault = await this.mintUtils.createTokenAccount(usdc, this.authority, TOKEN_PROGRAM_ID);
+        splToken.mintTo(this.conn, this.authority, usdc, fee_vault, this.authority, 1000000 * 1000000);
+
+
+        const mangoGroup = await this.mangoClient.initMangoGroup(
+            usdc,
+            msrm,
+            this.dexProgramId,
+            fee_vault,
+            10,
+            0.7,
+            0.06,
+            1.5,
+            this.authority,
+        );
+        const { signerKey, signerNonce } = await mango_client_v3.createSignerKeyAndNonce(
+            this.mangoProgramId,
+            mangoGroup,
+          );
+        
+        const mangoGroupData = await this.mangoClient.getMangoGroup(mangoGroup);
+
+        let mangoCookie: MangoCookie = {
+            mangoGroup:mangoGroup,
+            signerKey,
+            mangoCache:mangoGroupData.mangoCache,
+            usdcRootBank:mangoGroupData.getQuoteTokenInfo().rootBank,
+            usdcNodeBank:null,
+            tokens:null,
+            usdcMint: await this.mintUtils.createMint(6),
+            MSRM: await this.mintUtils.createMint(6),
+        };
+        return mangoCookie
     }
 
     public async createMangoCookie(tokensList: Array<String>) : Promise<MangoCookie> {
@@ -123,6 +168,10 @@ export class MangoUtils {
         mangoCookie.usdcRootBank = root_bank_address;
         mangoCookie.usdcNodeBank = node_bank_address;
         
+        
+        console.log('mango program id : ' + this.mangoProgramId)
+        console.log('serum program id : ' + this.dexProgramId)
+
         let ix = mango_client_v3.makeInitMangoGroupInstruction(
             this.mangoProgramId,
             group_address,
@@ -155,8 +204,13 @@ export class MangoUtils {
                 root_bank_address,
                 [node_bank_address]);
         
+        console.log('A')
         await this.processInstruction(ix, [this.authority]);
+
+        console.log('B')
         await this.processInstruction(ixCacheRootBank, [this.authority]);
+
+        console.log('C')
         await this.processInstruction(ixupdateRootBank, [this.authority]);
 
         mangoCookie.mangoGroup = group_address;
@@ -371,12 +425,15 @@ export class MangoUtils {
         transaction.recentBlockhash = hash.blockhash;
         // Sign transaction, broadcast, and confirm
         try{
-        await sendAndConfirmTransaction(
-            this.conn,
-            transaction,
-            signers,
-            { commitment: 'confirmed' },
-        );
+            await this.mangoClient.sendTransaction(transaction,
+                this.authority,
+                [],);
+        // await sendAndConfirmTransaction(
+        //     this.conn,
+        //     transaction,
+        //     signers,
+        //     { commitment: 'confirmed' },
+        //);
         }
         catch(ex)
         { 
