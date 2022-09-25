@@ -18,7 +18,7 @@ import {
   sendAndConfirmTransaction,
   Signer,
 } from '@solana/web3.js';
-import {SerumUtils, DEX_ID,} from "./serum";
+import {SerumUtils,} from "./serum";
 import {PythUtils} from "./pyth_utils";
 import { MintUtils, TokenData, } from './mint_utils';
 import { BN } from 'bn.js';
@@ -55,14 +55,13 @@ export class MangoUtils {
         this.mangoProgramId = mangoProgramId;
         this.dexProgramId = dexProgramId;
 
-        this.serumUtils = new SerumUtils(conn, authority);
-        this.mintUtils = new MintUtils(conn, authority);
+        this.serumUtils = new SerumUtils(conn, authority, dexProgramId);
+        this.mintUtils = new MintUtils(conn, authority, dexProgramId);
         this.mangoClient = new mango_client_v3.MangoClient(conn, mangoProgramId);
     }
 
     async createAccountForMango(size : number) : Promise<PublicKey> {
         const lamports = await this.conn.getMinimumBalanceForRentExemption(size);
-        console.log('lamports : {} size : {}', lamports, size)
         let address = Keypair.generate();
 
         const transaction = new Transaction().add(
@@ -93,44 +92,6 @@ export class MangoUtils {
         return address.publicKey;
     }
 
-    public async createMangoCookie2(tokensList: Array<String>) : Promise<MangoCookie> {
-        const usdc = await this.mintUtils.createMint(6);
-        const msrm = await this.mintUtils.createMint(6);
-        let fee_vault = await this.mintUtils.createTokenAccount(usdc, this.authority, TOKEN_PROGRAM_ID);
-        splToken.mintTo(this.conn, this.authority, usdc, fee_vault, this.authority, 1000000 * 1000000);
-
-
-        const mangoGroup = await this.mangoClient.initMangoGroup(
-            usdc,
-            msrm,
-            this.dexProgramId,
-            fee_vault,
-            10,
-            0.7,
-            0.06,
-            1.5,
-            this.authority,
-        );
-        const { signerKey, signerNonce } = await mango_client_v3.createSignerKeyAndNonce(
-            this.mangoProgramId,
-            mangoGroup,
-          );
-        
-        const mangoGroupData = await this.mangoClient.getMangoGroup(mangoGroup);
-
-        let mangoCookie: MangoCookie = {
-            mangoGroup:mangoGroup,
-            signerKey,
-            mangoCache:mangoGroupData.mangoCache,
-            usdcRootBank:mangoGroupData.getQuoteTokenInfo().rootBank,
-            usdcNodeBank:null,
-            tokens:null,
-            usdcMint: await this.mintUtils.createMint(6),
-            MSRM: await this.mintUtils.createMint(6),
-        };
-        return mangoCookie
-    }
-
     public async createMangoCookie(tokensList: Array<String>) : Promise<MangoCookie> {
 
         const size = mango_client_v3.MangoGroupLayout.span;
@@ -150,7 +111,7 @@ export class MangoUtils {
             mangoCache:null,
             usdcRootBank:null,
             usdcNodeBank:null,
-            tokens:null,
+            tokens:new Map<String, MangoTokenData>(),
             usdcMint: await this.mintUtils.createMint(6),
             MSRM: await this.mintUtils.createMint(6),
         };
@@ -204,33 +165,37 @@ export class MangoUtils {
                 root_bank_address,
                 [node_bank_address]);
         
-        console.log('A')
         await this.processInstruction(ix, [this.authority]);
-
-        console.log('B')
         await this.processInstruction(ixCacheRootBank, [this.authority]);
-
-        console.log('C')
         await this.processInstruction(ixupdateRootBank, [this.authority]);
 
         mangoCookie.mangoGroup = group_address;
         mangoCookie.mangoCache = mango_cache;
+        console.log('Mango group created, creating tokens')
+        for (const tokenStr of tokensList)
+        {
+            await this.createMangoToken(mangoCookie, tokenStr, 6, 100)
+        }
 
         return mangoCookie;
     }
 
     public async createMangoToken(mangoCookie: MangoCookie, tokenName: String, nbDecimals, startingPrice ) : Promise<MangoTokenData> {
+        console.log('Creating token '+ tokenName)
         const tokenData = await this.mintUtils.createNewToken(mangoCookie.usdcMint, nbDecimals, startingPrice);
         let mangoTokenData : MangoTokenData = {
             market : tokenData.market,
             marketIndex: mangoCookie.tokens.size,
             mint: tokenData.mint,
             priceOracle: tokenData.priceOracle,
-            starting_price: startingPrice,
+            nbDecimals: tokenData.nbDecimals,
+            startingPrice: startingPrice,
             nodeBank: await this.createAccountForMango(mango_client_v3.RootBankLayout.span),
             rootBank: await this.createAccountForMango(mango_client_v3.NodeBankLayout.span),
         };
 
+
+        console.log('Adding oracle in mango for '+ tokenName)
         // add oracle to mango
         let add_oracle_ix = mango_client_v3.makeAddOracleInstruction(
             this.mangoProgramId,
@@ -250,8 +215,9 @@ export class MangoUtils {
             [this.authority],
             { commitment: 'confirmed' },
         );
-
+        console.log('Initializing spot market for '+ tokenName)
         await this.initSpotMarket(mangoCookie, mangoTokenData);
+        console.log('Initializing perp market for '+ tokenName)
         await this.createAndInitPerpMarket(mangoCookie, mangoTokenData);
         mangoCookie.tokens.set(tokenName, mangoTokenData);
         return mangoTokenData;
@@ -266,7 +232,7 @@ export class MangoUtils {
             mangoCookie.mangoGroup,
             token.priceOracle.publicKey,
             token.market.address,
-            DEX_ID,
+            this.dexProgramId,
             token.mint,
             token.nodeBank,
             vault,
@@ -396,7 +362,7 @@ export class MangoUtils {
                     Buffer.from("OpenOrders"),
                 ], this.mangoProgramId);
         
-        const space = OpenOrders.getLayout(DEX_ID).span;
+        const space = OpenOrders.getLayout(this.dexProgramId).span;
         //await this.createAccount( spotOpenOrdersAccount, owner, DEX_ID, space);
         const lamports = await this.conn.getMinimumBalanceForRentExemption(space);
 
@@ -405,7 +371,7 @@ export class MangoUtils {
             mangoContext.mangoGroup,
             mangoAccount,
             owner.publicKey,
-            DEX_ID,
+            this.dexProgramId,
             spotOpenOrdersAccount,
             tokenData.market.address,
             mangoContext.signerKey,

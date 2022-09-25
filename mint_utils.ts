@@ -12,7 +12,8 @@ import { SerumUtils } from "./serum";
 export interface TokenData {
     mint : PublicKey,
     market : Market | undefined,
-    starting_price : number,
+    startingPrice : number,
+    nbDecimals: number,
     priceOracle: Keypair | undefined,
 }
 
@@ -26,27 +27,39 @@ export class MintUtils {
     private serumUtils : SerumUtils;
 
 
-    constructor(conn: Connection, authority: Keypair) {
+    constructor(conn: Connection, authority: Keypair, dexProgramId: PublicKey) {
         this.conn = conn;
         this.authority = authority;
         this.recentBlockhash = "";
         this.pythUtils = new PythUtils(conn, authority)
-        this.serumUtils = new SerumUtils(conn, authority)
+        this.serumUtils = new SerumUtils(conn, authority, dexProgramId)
     }
 
     async createMint(nb_decimals = 6) : Promise<PublicKey> {
-
+        const kp = Keypair.generate();
         return await splToken.createMint(this.conn, 
             this.authority, 
             this.authority.publicKey, 
             this.authority.publicKey, 
-            nb_decimals,)
+            nb_decimals,
+            kp)
     }
 
-    public async createNewToken(quoteToken: PublicKey, nb_decimals = 6, starting_price = 1_000_000) {
-        const mint = await this.createMint(nb_decimals);
+    public async updateTokenPrice(tokenData: TokenData, newPrice: number) {
+        this.pythUtils.updatePriceAccount(tokenData.priceOracle, 
+            {
+                exponent: tokenData.nbDecimals,
+                aggregatePriceInfo: {
+                price: BigInt(newPrice),
+                conf: BigInt(newPrice * 0.01),
+                },
+            });
+    }
+
+    public async createNewToken(quoteToken: PublicKey, nbDecimals = 6, startingPrice = 1_000_000) {
+        const mint = await this.createMint(nbDecimals);
         const tokenData : TokenData = { 
-            mint: await this.createMint(nb_decimals),
+            mint: mint,
             market : await this.serumUtils.createMarket({
                 baseToken : mint,
                 quoteToken: quoteToken,
@@ -54,9 +67,11 @@ export class MintUtils {
                 quoteLotSize : 1000,
                 feeRateBps : 0,
             }),
-            starting_price : 1,
+            startingPrice : startingPrice,
+            nbDecimals: nbDecimals,
             priceOracle : await this.pythUtils.createPriceAccount(),
         };
+        await this.updateTokenPrice(tokenData, startingPrice)
         return tokenData;
     }
 

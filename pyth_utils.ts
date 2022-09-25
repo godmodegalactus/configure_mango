@@ -92,6 +92,8 @@ export class PythUtils {
             { isSigner: true, isWritable: true, pubkey: account.publicKey },
         ];
         let offsetBN = new anchor.BN(offset); 
+        
+        //const instructionData = Buffer.from([235, 116, 91, 200, 206, 170, 144, 120]);
         const data = Buffer.concat([offsetBN.toBuffer("le", 8), input]);
         
         const transaction = new anchor.web3.Transaction().add(

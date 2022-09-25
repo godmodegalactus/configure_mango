@@ -14,19 +14,19 @@ import {
 import { BN } from "@project-serum/anchor";
 import * as splToken from "@solana/spl-token";
 
-export const DEX_ID = new PublicKey("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
-
 export class SerumUtils {
     private authority: Keypair;
     private payer : PublicKey;
     private conn: Connection;
-
+    private dexProgramId : PublicKey;
     constructor(
         conn: Connection,
-        authority: Keypair) {
+        authority: Keypair,
+        dexProgramId : PublicKey) {
         this.conn = conn;
         this.authority = authority;
         this.payer = authority.publicKey;
+        this.dexProgramId = dexProgramId;
     }
 
     private async createAccountIx(
@@ -82,12 +82,13 @@ export class SerumUtils {
      * Create a new Serum market
      */
     public async createMarket(info: CreateMarketInfo): Promise<Market> {
+        console.log("Creating market")
         const owner = this.authority;
-        const market = await this.createAccount( owner, DEX_ID, Market.getLayout(DEX_ID).span,);
-        const requestQueue = await this.createAccount( owner, DEX_ID, 5132);
-        const eventQueue = await this.createAccount( owner, DEX_ID, 262156);
-        const bids = await this.createAccount( owner, DEX_ID, 65548);
-        const asks = await this.createAccount( owner, DEX_ID, 65548);
+        const market = await this.createAccount( owner, this.dexProgramId, Market.getLayout(this.dexProgramId).span,);
+        const requestQueue = await this.createAccount( owner, this.dexProgramId, 5132);
+        const eventQueue = await this.createAccount( owner, this.dexProgramId, 262156);
+        const bids = await this.createAccount( owner, this.dexProgramId, 65548);
+        const asks = await this.createAccount( owner, this.dexProgramId, 65548);
         const quoteDustThreshold = new BN(100);
 
         const [vaultOwner, vaultOwnerBump] = await this.findVaultOwner(
@@ -95,8 +96,8 @@ export class SerumUtils {
         );
 
         const [baseVault, quoteVault] = await Promise.all([
-            splToken.createAccount(this.conn, this.authority, info.baseToken, vaultOwner),
-            splToken.createAccount(this.conn, this.authority, info.quoteToken, vaultOwner),
+            splToken.createAccount(this.conn, this.authority, info.baseToken, vaultOwner, Keypair.generate()),
+            splToken.createAccount(this.conn, this.authority, info.quoteToken, vaultOwner, Keypair.generate()),
             ]);
         
             
@@ -117,7 +118,7 @@ export class SerumUtils {
                     feeRateBps: info.feeRateBps,
                     vaultSignerNonce: vaultOwnerBump,
                     quoteDustThreshold,
-                    programId: DEX_ID,
+                    programId: this.dexProgramId,
                 })
             )
         );
@@ -128,8 +129,9 @@ export class SerumUtils {
             this.conn,
             market.publicKey,
             { commitment: "recent" },
-            DEX_ID
+            this.dexProgramId
         );
+        console.log('Market created')
         return mkt;
     }
 
@@ -200,7 +202,7 @@ export class SerumUtils {
             try {
                 const vaultOwner = await PublicKey.createProgramAddress(
                     [market.toBuffer(), bump.toArrayLike(Buffer, "le", 8)],
-                    DEX_ID
+                    this.dexProgramId
                 );
     
                 return [vaultOwner, bump];
