@@ -82,7 +82,6 @@ export class SerumUtils {
      * Create a new Serum market
      */
     public async createMarket(info: CreateMarketInfo): Promise<Market> {
-        console.log("Creating market")
         const owner = this.authority;
         const market = await this.createAccount( owner, this.dexProgramId, Market.getLayout(this.dexProgramId).span,);
         const requestQueue = await this.createAccount( owner, this.dexProgramId, 5132);
@@ -131,7 +130,6 @@ export class SerumUtils {
             { commitment: "recent" },
             this.dexProgramId
         );
-        console.log('Market created')
         return mkt;
     }
 

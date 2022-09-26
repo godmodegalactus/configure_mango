@@ -172,20 +172,17 @@ export class MangoUtils {
         mangoCookie.mangoGroup = group_address;
         mangoCookie.mangoCache = mango_cache;
         console.log('Mango group created, creating tokens')
-        await Promise.all( tokensList.map(tokenStr=>
-        {
-            this.createMangoToken(mangoCookie, tokenStr, 6, 100)
-        }));
+        await Promise.all( tokensList.map((tokenStr, tokenIndex) => this.createMangoToken(mangoCookie, tokenStr, tokenIndex, 6, 100)));
 
         return mangoCookie;
     }
 
-    public async createMangoToken(mangoCookie: MangoCookie, tokenName: String, nbDecimals, startingPrice ) : Promise<MangoTokenData> {
+    public async createMangoToken(mangoCookie: MangoCookie, tokenName: String, tokenIndex : number, nbDecimals, startingPrice ) : Promise<MangoTokenData> {
         console.log('Creating token '+ tokenName)
         const tokenData = await this.mintUtils.createNewToken(mangoCookie.usdcMint, nbDecimals, startingPrice);
         let mangoTokenData : MangoTokenData = {
             market : tokenData.market,
-            marketIndex: mangoCookie.tokens.size,
+            marketIndex: tokenIndex,
             mint: tokenData.mint,
             priceOracle: tokenData.priceOracle,
             nbDecimals: tokenData.nbDecimals,
@@ -193,9 +190,6 @@ export class MangoUtils {
             nodeBank: await this.createAccountForMango(mango_client_v3.NodeBankLayout.span),
             rootBank: await this.createAccountForMango(mango_client_v3.RootBankLayout.span),
         };
-
-
-        console.log('Adding oracle in mango for '+ tokenName)
         // add oracle to mango
         let add_oracle_ix = mango_client_v3.makeAddOracleInstruction(
             this.mangoProgramId,
@@ -215,9 +209,7 @@ export class MangoUtils {
             [this.authority],
             { commitment: 'confirmed' },
         );
-        console.log('Initializing spot market for '+ tokenName)
         await this.initSpotMarket(mangoCookie, mangoTokenData);
-        console.log('Initializing perp market for '+ tokenName)
         await this.createAndInitPerpMarket(mangoCookie, mangoTokenData);
         mangoCookie.tokens.set(tokenName, mangoTokenData);
         return mangoTokenData;
