@@ -1,4 +1,4 @@
-import { Market, DexInstructions, OpenOrders } from "@project-serum/serum";
+import { Market, DexInstructions, OpenOrders,  } from "@project-serum/serum";
 import {
     Connection,
     Keypair,
@@ -145,6 +145,10 @@ export class SerumUtils {
 
         await sendAndConfirmTransaction(this.conn, fundTx, [this.authority]);
         return wallet;
+    }
+
+    public async getMarket(market: PublicKey) {
+        return Market.load(this.conn, market, {commitment: "confirmed"}, this.dexProgramId);
     }
 
     public async createMarketMaker(

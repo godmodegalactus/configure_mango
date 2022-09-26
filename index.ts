@@ -1,6 +1,8 @@
 import { MangoUtils } from "./mango_utils";
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import { sleep } from "@blockworks-foundation/mango-client";
+import * as fs from 'fs';
+import { web3 } from "@project-serum/anchor";
 
 function delay(ms: number) {
     return new Promise( resolve => setTimeout(resolve, ms) );
@@ -34,8 +36,12 @@ async function main() {
     try{
         const mangoUtils = new MangoUtils(connection, authority, mangoProgramId, dexProgramId);
 
-        const cookie = await mangoUtils.createMangoCookie(['SOL', 'BTC', 'ETH', 'AVAX', 'SRM', 'FTT'])
-
+        const cookie = await mangoUtils.createMangoCookie(['SOL', 'BTC', 'ETH', 'AVAX', 'SRM', 'FTT', 'RAY', 'MNGO', 'BNB', 'GMT', 'ADA'])
+        
+        console.log('Creating ids.json');
+        const json =  mangoUtils.convertCookie2Json(cookie)
+        fs.writeFileSync('ids.json', JSON.stringify(json, null, 2));
+        fs.writeFileSync('authority.json', JSON.stringify(authority.secretKey, null, 2));
         console.log(cookie)
     } finally {
         // to log mango logs

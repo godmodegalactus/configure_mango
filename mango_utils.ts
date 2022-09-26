@@ -22,11 +22,22 @@ import {SerumUtils,} from "./serum_utils";
 import {PythUtils} from "./pyth_utils";
 import { MintUtils, TokenData, } from './mint_utils';
 import { BN } from 'bn.js';
+import { GroupConfig, OracleConfig, PerpMarketConfig, SpotMarketConfig, TokenConfig, Cluster } from '@blockworks-foundation/mango-client';
+import { token } from '@project-serum/anchor/dist/cjs/utils';
+import { Config } from './config';
+
+export interface PerpMarketData {
+    publicKey: PublicKey,
+    asks : PublicKey,
+    bids : PublicKey,
+    eventQ : PublicKey,
+}
 
 export interface MangoTokenData extends TokenData {
     rootBank : PublicKey;
     nodeBank : PublicKey;
     marketIndex: number;
+    perpMarket : PerpMarketData;
 }
 
 export interface MangoCookie {
@@ -189,6 +200,7 @@ export class MangoUtils {
             startingPrice: startingPrice,
             nodeBank: await this.createAccountForMango(mango_client_v3.NodeBankLayout.span),
             rootBank: await this.createAccountForMango(mango_client_v3.RootBankLayout.span),
+            perpMarket: null,
         };
         // add oracle to mango
         let add_oracle_ix = mango_client_v3.makeAddOracleInstruction(
@@ -210,7 +222,7 @@ export class MangoUtils {
             { commitment: 'confirmed' },
         );
         await this.initSpotMarket(mangoCookie, mangoTokenData);
-        await this.createAndInitPerpMarket(mangoCookie, mangoTokenData);
+        mangoTokenData.perpMarket = await this.createAndInitPerpMarket(mangoCookie, mangoTokenData);
         mangoCookie.tokens.set(tokenName, mangoTokenData);
         return mangoTokenData;
     }
@@ -263,8 +275,8 @@ export class MangoUtils {
         return this.mangoClient.getMangoGroup(mangoCookie.mangoGroup)
     }
 
-    public async createAndInitPerpMarket(mangoCookie: MangoCookie, token: MangoTokenData) {
-        return await this.mangoClient.addPerpMarket(
+    public async createAndInitPerpMarket(mangoCookie: MangoCookie, token: MangoTokenData) : Promise<PerpMarketData> {
+        await this.mangoClient.addPerpMarket(
             await this.getMangoGroup(mangoCookie),
             token.priceOracle.publicKey,
             token.mint,
@@ -283,6 +295,18 @@ export class MangoUtils {
             0,
             2,
           );
+
+        const mangoGroup = await this.mangoClient.getMangoGroup(mangoCookie.mangoGroup);
+        const tokenIndex = token.marketIndex;
+        const perpMarketPk = mangoGroup.perpMarkets[tokenIndex].perpMarket
+        const perpMarket = await this.mangoClient.getPerpMarket(perpMarketPk, token.nbDecimals, 6);
+        const perpMarketData : PerpMarketData = {
+            publicKey: perpMarketPk,
+            asks: perpMarket.asks,
+            bids: perpMarket.bids,
+            eventQ: perpMarket.eventQueue,
+        }
+        return perpMarketData
     }
 
     public async refreshTokenCache(mangoCookie: MangoCookie, tokenData : MangoTokenData) {
@@ -380,12 +404,7 @@ export class MangoUtils {
             await this.mangoClient.sendTransaction(transaction,
                 this.authority,
                 [],);
-        // await sendAndConfirmTransaction(
-        //     this.conn,
-        //     transaction,
-        //     signers,
-        //     { commitment: 'confirmed' },
-        //);
+
         }
         catch(ex)
         { 
@@ -395,5 +414,79 @@ export class MangoUtils {
             }
             throw ex;
         }
+    }
+
+    convertCookie2Json(mangoCookie: MangoCookie) {
+        const oracles = Array.from(mangoCookie.tokens).map(x => {
+            const oracle : OracleConfig = {
+                publicKey: x[1].priceOracle.publicKey,
+                symbol: x[0] + 'USDC'
+            }
+            return oracle;
+        })
+
+        const perpMarkets = Array.from(mangoCookie.tokens).map(x=> {
+            const perpMarket : PerpMarketConfig= {
+                publicKey: x[1].perpMarket.publicKey,
+                asksKey: x[1].perpMarket.asks,
+                bidsKey: x[1].perpMarket.bids,
+                eventsKey: x[1].perpMarket.eventQ,
+                marketIndex: x[1].marketIndex,
+                baseDecimals: x[1].nbDecimals,
+                baseSymbol: x[0].toString(),
+                name: (x[0] + 'USDC PERP'),
+                quoteDecimals: 6, 
+            }
+            return perpMarket
+        })
+
+        const spotMarkets = Array.from(mangoCookie.tokens).map( x=> {
+            
+            const spotMarket : SpotMarketConfig = {
+                name : x[0] + 'USDC Top Market',
+                marketIndex: x[1].marketIndex,
+                publicKey: x[1].market.address,
+                asksKey: x[1].market.asksAddress,
+                bidsKey: x[1].market.bidsAddress,
+                baseDecimals: x[1].nbDecimals,
+                baseSymbol: x[0].toString(),
+                eventsKey: x[1].market.decoded.eventQueue,
+                quoteDecimals: 6,
+            }
+            return spotMarket;
+        })
+
+        const tokenConfigs = Array.from(mangoCookie.tokens).map(x=> {
+            const tokenConfig : TokenConfig = {
+                decimals: x[1].nbDecimals,
+                mintKey: x[1].mint,
+                nodeKeys: [x[1].nodeBank],
+                rootKey: x[1].rootBank,
+                symbol: x[0].toString(),
+            }
+            return tokenConfig
+        })
+
+        const groupConfig : GroupConfig = {
+            cluster :'localnet',
+            mangoProgramId: this.mangoProgramId,
+            name: 'localnet',
+            publicKey: mangoCookie.mangoGroup,
+            quoteSymbol: "USDC",
+            oracles: oracles,
+            serumProgramId: this.dexProgramId,
+            perpMarkets: perpMarkets,
+            spotMarkets: spotMarkets,
+            tokens: tokenConfigs,
+        }
+
+        const groupConfigs : GroupConfig[] = [groupConfig]
+        const cluster_urls : Record<Cluster, string> = {"devnet": "https://mango.devnet.rpcpool.com",
+        "localnet": "http://127.0.0.1:8899",
+        "mainnet": "https://mango.rpcpool.com/946ef7337da3f5b8d3e4a34e7f88",
+        "testnet": "http://api.testnet.rpcpool.com"};
+
+        const config = new Config ( cluster_urls, groupConfigs );
+        return config.toJson();
     }
 }
