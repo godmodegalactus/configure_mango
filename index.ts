@@ -8,7 +8,6 @@ function delay(ms: number) {
 
 async function main() {
     const connection = new Connection('http://localhost:8899', 'confirmed');
-    console.log('transaction-count' + await connection.getTransactionCount())
     console.log('Connecting to cluster')
     const authority = Keypair.generate();
 
@@ -43,6 +42,7 @@ async function main() {
         // await sleep(5000)
         // const endSlot = await connection.getSlot();
         // const blockSlots = await connection.getBlocks(beginSlot, endSlot);
+        // console.log("\n\n===============================================")
         // for (let blockSlot of blockSlots) {
         //     const block = await connection.getBlock(blockSlot);
         //     for (let i =0; i<block.transactions.length; ++i){

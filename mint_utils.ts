@@ -7,7 +7,7 @@ import {
 
 import { Market, OpenOrders } from "@project-serum/serum";
 import { PythUtils } from "./pyth_utils";
-import { SerumUtils } from "./serum";
+import { SerumUtils } from "./serum_utils";
 
 export interface TokenData {
     mint : PublicKey,

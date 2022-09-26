@@ -18,7 +18,7 @@ import {
   sendAndConfirmTransaction,
   Signer,
 } from '@solana/web3.js';
-import {SerumUtils,} from "./serum";
+import {SerumUtils,} from "./serum_utils";
 import {PythUtils} from "./pyth_utils";
 import { MintUtils, TokenData, } from './mint_utils';
 import { BN } from 'bn.js';
@@ -172,10 +172,10 @@ export class MangoUtils {
         mangoCookie.mangoGroup = group_address;
         mangoCookie.mangoCache = mango_cache;
         console.log('Mango group created, creating tokens')
-        for (const tokenStr of tokensList)
+        await Promise.all( tokensList.map(tokenStr=>
         {
-            await this.createMangoToken(mangoCookie, tokenStr, 6, 100)
-        }
+            this.createMangoToken(mangoCookie, tokenStr, 6, 100)
+        }));
 
         return mangoCookie;
     }
@@ -190,8 +190,8 @@ export class MangoUtils {
             priceOracle: tokenData.priceOracle,
             nbDecimals: tokenData.nbDecimals,
             startingPrice: startingPrice,
-            nodeBank: await this.createAccountForMango(mango_client_v3.RootBankLayout.span),
-            rootBank: await this.createAccountForMango(mango_client_v3.NodeBankLayout.span),
+            nodeBank: await this.createAccountForMango(mango_client_v3.NodeBankLayout.span),
+            rootBank: await this.createAccountForMango(mango_client_v3.RootBankLayout.span),
         };
 
 
@@ -264,13 +264,7 @@ export class MangoUtils {
         transaction.feePayer = this.authority.publicKey;
         let hash = await this.conn.getRecentBlockhash();
         transaction.recentBlockhash = hash.blockhash;
-        // Sign transaction, broadcast, and confirm
-        await sendAndConfirmTransaction(
-            this.conn,
-            transaction,
-            [this.authority],
-            { commitment: 'confirmed' },
-        );
+        await this.mangoClient.sendTransaction(transaction, this.authority, [])
     }
 
     public async getMangoGroup(mangoCookie: MangoCookie) {
