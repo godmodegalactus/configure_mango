@@ -23,16 +23,16 @@ async function main() {
     console.log('Creating Mango Cookie')
     const mangoProgramId = new PublicKey('BXhdkETgbHrr5QmVBT1xbz3JrMM28u5djbVtmTUfmFTH')
     const dexProgramId = new PublicKey('3qx9WcNPw4jj3v1kJbWoxSN2ZAakwUXFu9HDr2QjQ6xq');
-    const logId = connection.onLogs(mangoProgramId, (log, ctx) => {
-        if (log.err != null ){
-            console.log("mango error : " + log.err.toString())
-        }
-        else {
-            for(const l of log.logs) {
-                console.log("mango log : " + l)
-            }
-        }
-    });
+    // const logId = connection.onLogs(mangoProgramId, (log, ctx) => {
+    //     if (log.err != null ){
+    //         console.log("mango error : " + log.err.toString())
+    //     }
+    //     else {
+    //         for(const l of log.logs) {
+    //             console.log("mango log : " + l)
+    //         }
+    //     }
+    // });
     try{
         const mangoUtils = new MangoUtils(connection, authority, mangoProgramId, dexProgramId);
 
@@ -41,8 +41,8 @@ async function main() {
         console.log('Creating ids.json');
         const json =  mangoUtils.convertCookie2Json(cookie)
         fs.writeFileSync('ids.json', JSON.stringify(json, null, 2));
-        fs.writeFileSync('authority.json', JSON.stringify(authority.secretKey, null, 2));
-        console.log(cookie)
+        fs.writeFileSync('authority.json', '[' + authority.secretKey.toString() + ']');
+        console.log('Mango cookie created successfully')
     } finally {
         // to log mango logs
         // await sleep(5000)
@@ -61,7 +61,8 @@ async function main() {
         //         }
         //     }
         // }
-        connection.removeOnLogsListener(logId);
+
+        //connection.removeOnLogsListener(logId);
     }    
 } 
 
