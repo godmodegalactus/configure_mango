@@ -48,7 +48,7 @@ export async function main() {
             const info = {};
             info['publicKey'] = x.kp.publicKey.toBase58();
             info['secretKey'] = Array.from(x.kp.secretKey);
-            info['mangoAccountPks'] = x.mangoAddress.toBase58();
+            info['mangoAccountPks'] = [x.mangoAddress.toBase58()];
             return info;
         })
         console.log('created ' + nbUsers +' Users');

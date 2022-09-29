@@ -82,6 +82,8 @@ export class MangoUtils {
     private mangoProgramId: PublicKey;
     private dexProgramId: PublicKey;
 
+    private mangoMint = new PublicKey('MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac');
+
     constructor(conn: Connection, authority: Keypair, mangoProgramId: PublicKey, dexProgramId: PublicKey,) {
         this.conn = conn;
         this.authority = authority;
@@ -260,23 +262,6 @@ export class MangoUtils {
             );
         }
         await this.initSpotMarket(mangoCookie, mangoTokenData);
-        // cache root bank and node bank
-        {
-            const transaction = new Transaction();
-            transaction.add(ixCacheRootBank);
-            transaction.add(ixupdateRootBank);
-            transaction.feePayer = this.authority.publicKey;
-            let hash = await this.conn.getRecentBlockhash();
-            transaction.recentBlockhash = hash.blockhash;
-            // Sign transaction, broadcast, and confirm
-            await this.mangoClient.sendTransaction(
-                transaction,
-                this.authority,
-                [],
-                3600,
-                'confirmed',
-            );
-        }
 
         const group = await this.mangoClient.getMangoGroup(mangoCookie.mangoGroup);
         mangoTokenData.marketIndex = group.getTokenIndex(mangoTokenData.mint)
@@ -342,9 +327,18 @@ export class MangoUtils {
 
     private async initPerpMarket(mangoCookie: MangoCookie, token: MangoTokenData) {
         const maxNumEvents = 256;
-        const perpMarketPk = await this.createAccountForMango(
-            PerpMarketLayout.span,
-        );
+        // const perpMarketPk = await this.createAccountForMango(
+        //     PerpMarketLayout.span,
+        // );
+
+        const [perpMarketPk] = await PublicKey.findProgramAddress(
+            [
+              mangoCookie.mangoGroup.toBytes(),
+              new Buffer('PerpMarket', 'utf-8'),
+              token.priceOracle.publicKey.toBytes(),
+            ],
+            this.mangoProgramId,
+          );
 
         const eventQ = await this.createAccountForMango(
             PerpEventQueueHeaderLayout.span + maxNumEvents * PerpEventLayout.span,
@@ -358,13 +352,16 @@ export class MangoUtils {
             BookSideLayout.span,
         );
 
-        const mangoVault = await this.mintUtils.createTokenAccount(
-            mangoCookie.usdcMint,
-            this.authority,
-            mangoCookie.signerKey,
-        );
+        const [mngoVaultPk] = await PublicKey.findProgramAddress(
+            [
+              perpMarketPk.toBytes(),
+              TOKEN_PROGRAM_ID.toBytes(),
+              this.mangoMint.toBytes(),
+            ],
+            this.mangoProgramId,
+          );
 
-        const instruction = await makeAddPerpMarketInstruction(
+        const instruction = await makeCreatePerpMarketInstruction(
             this.mangoProgramId,
             mangoCookie.mangoGroup,
             token.priceOracle.publicKey,
@@ -372,8 +369,10 @@ export class MangoUtils {
             eventQ,
             bids,
             asks,
-            mangoVault,
+            this.mangoMint,
+            mngoVaultPk,
             this.authority.publicKey,
+            mangoCookie.signerKey,
             I80F48.fromNumber(10),
             I80F48.fromNumber(5),
             I80F48.fromNumber(0.05),
@@ -386,14 +385,42 @@ export class MangoUtils {
             new BN(3600),
             new BN(0),
             new BN(2),
-        );
+            new BN(2),
+            new BN(0),
+            new BN(6)
+        )
+
+        // const instruction = await makeAddPerpMarketInstruction(
+        //     this.mangoProgramId,
+        //     mangoCookie.mangoGroup,
+        //     token.priceOracle.publicKey,
+        //     perpMarketPk,
+        //     eventQ,
+        //     bids,
+        //     asks,
+        //     mangoVault,
+        //     this.authority.publicKey,
+        //     I80F48.fromNumber(10),
+        //     I80F48.fromNumber(5),
+        //     I80F48.fromNumber(0.05),
+        //     I80F48.fromNumber(0),
+        //     I80F48.fromNumber(0.005),
+        //     new BN(1000),
+        //     new BN(100),
+        //     I80F48.fromNumber(1),
+        //     I80F48.fromNumber(200),
+        //     new BN(3600),
+        //     new BN(0),
+        //     new BN(2),
+        // );
 
         const transaction = new Transaction();
         transaction.add(instruction);
 
         const additionalSigners = [this.authority];
 
-        await sendAndConfirmTransaction(this.conn, transaction, additionalSigners);
+        await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed');
+        //await sendAndConfirmTransaction(this.conn, transaction, additionalSigners);
         const perpMarketData: PerpMarketData = {
             publicKey: perpMarketPk,
             asks: asks,
