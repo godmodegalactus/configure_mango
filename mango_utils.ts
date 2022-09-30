@@ -389,35 +389,9 @@ export class MangoUtils {
             new BN(0),
             new BN(6)
         )
-
-        // const instruction = await makeAddPerpMarketInstruction(
-        //     this.mangoProgramId,
-        //     mangoCookie.mangoGroup,
-        //     token.priceOracle.publicKey,
-        //     perpMarketPk,
-        //     eventQ,
-        //     bids,
-        //     asks,
-        //     mangoVault,
-        //     this.authority.publicKey,
-        //     I80F48.fromNumber(10),
-        //     I80F48.fromNumber(5),
-        //     I80F48.fromNumber(0.05),
-        //     I80F48.fromNumber(0),
-        //     I80F48.fromNumber(0.005),
-        //     new BN(1000),
-        //     new BN(100),
-        //     I80F48.fromNumber(1),
-        //     I80F48.fromNumber(200),
-        //     new BN(3600),
-        //     new BN(0),
-        //     new BN(2),
-        // );
-
+        
         const transaction = new Transaction();
         transaction.add(instruction);
-
-        const additionalSigners = [this.authority];
 
         await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed');
         //await sendAndConfirmTransaction(this.conn, transaction, additionalSigners);
@@ -656,7 +630,14 @@ export class MangoUtils {
         return config.toJson();
     }
 
-    async createUser(mangoGroup: mango_client_v3.MangoGroup): Promise<MangoUser> {
+    async createUser(
+        mangoCookie, 
+        mangoGroup: mango_client_v3.MangoGroup, 
+        usdcAcc: PublicKey,
+        rootBanks : mango_client_v3.RootBank[],
+        nodeBanks : mango_client_v3.NodeBank[],
+        fundingAccounts : PublicKey[],
+    ): Promise<MangoUser> {
         console.log("Creating User")
         const user = Keypair.generate();
 
@@ -664,14 +645,58 @@ export class MangoUtils {
             user.publicKey,
             LAMPORTS_PER_SOL * 100);
 
-        const acc = await this.mangoClient.createMangoAccount(
+        const mangoAcc = await this.mangoClient.createMangoAccount(
             mangoGroup,
             user,
             1,
             user.publicKey,
         );
+
+        //const mangoAccount = await this.mangoClient.getMangoAccount(user.mangoAddress, this.dexProgramId)
+        const depositUsdcIx = makeDepositInstruction(
+            this.mangoProgramId,
+            mangoCookie.mangoGroup,
+            this.authority.publicKey,
+            mangoGroup.mangoCache,
+            mangoAcc,
+            mangoCookie.usdcRootBank,
+            mangoCookie.usdcNodeBank,
+            mangoCookie.usdcVault,
+            usdcAcc,
+            new BN(10_000_000_000),
+        );
+        const blockHashInfo = await this.conn.getLatestBlockhashAndContext();
+        const transaction = new Transaction()
+            .add(depositUsdcIx)
+        transaction.recentBlockhash = blockHashInfo.value.blockhash;
+        transaction.feePayer = this.authority.publicKey;
+        await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
+        for (const tokenIte of mangoCookie.tokens)
+        {
+            const marketIndex = tokenIte[1].marketIndex;
+            
+            const deposit = makeDepositInstruction(
+                this.mangoProgramId,
+                mangoCookie.mangoGroup,
+                this.authority.publicKey,
+                mangoGroup.mangoCache,
+                mangoAcc,
+                rootBanks[marketIndex].publicKey,
+                nodeBanks[marketIndex].publicKey,
+                nodeBanks[marketIndex].vault,
+                fundingAccounts[marketIndex],
+                new BN(1_000_000_000),
+            );
+            const blockHashInfo = await this.conn.getLatestBlockhashAndContext();
+            const transaction = new Transaction()
+                .add(deposit)
+            transaction.recentBlockhash = blockHashInfo.value.blockhash;
+            transaction.feePayer = this.authority.publicKey;
+            await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
+        }
+
         console.log("Created User")
-        return { kp: user, mangoAddress: acc };
+        return { kp: user, mangoAddress: mangoAcc };
     }
 
     public async createAndMintUsers(mangoCookie: MangoCookie, nbUsers: number): Promise<MangoUser[]> {
@@ -701,54 +726,8 @@ export class MangoUtils {
             )
             tmpAccounts[tokenIte[1].marketIndex] = acc
         }
-        let users: MangoUser[] = []
-        for (let i = 0; i < nbUsers; ++i) {
-            const user = await this.createUser(mangoGroup);
-            //const mangoAccount = await this.mangoClient.getMangoAccount(user.mangoAddress, this.dexProgramId)
-            const depositUsdcIx = makeDepositInstruction(
-                this.mangoProgramId,
-                mangoCookie.mangoGroup,
-                this.authority.publicKey,
-                mangoGroup.mangoCache,
-                user.mangoAddress,
-                mangoCookie.usdcRootBank,
-                mangoCookie.usdcNodeBank,
-                mangoCookie.usdcVault,
-                usdcAcc,
-                new BN(10_000_000_000),
-            );
-            const blockHashInfo = await this.conn.getLatestBlockhashAndContext();
-            const transaction = new Transaction()
-                .add(depositUsdcIx)
-            transaction.recentBlockhash = blockHashInfo.value.blockhash;
-            transaction.feePayer = this.authority.publicKey;
-            await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
-            for (const tokenIte of mangoCookie.tokens)
-            {
-                const marketIndex = tokenIte[1].marketIndex;
-                
-                const deposit = makeDepositInstruction(
-                    this.mangoProgramId,
-                    mangoCookie.mangoGroup,
-                    this.authority.publicKey,
-                    mangoGroup.mangoCache,
-                    user.mangoAddress,
-                    rootBanks[marketIndex].publicKey,
-                    nodeBanks[marketIndex].publicKey,
-                    nodeBanks[marketIndex].vault,
-                    tmpAccounts[marketIndex],
-                    new BN(1_000_000_000),
-                );
-                const blockHashInfo = await this.conn.getLatestBlockhashAndContext();
-                const transaction = new Transaction()
-                    .add(deposit)
-                transaction.recentBlockhash = blockHashInfo.value.blockhash;
-                transaction.feePayer = this.authority.publicKey;
-                await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
-            }
-
-            users.push(user)
-        }
+        // create 50 users
+        let users = await Promise.all( [...Array(nbUsers)].map(_x => this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts)));
         return users;
     }
 }
