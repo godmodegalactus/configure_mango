@@ -11,10 +11,10 @@ export async function main() {
 
 
     console.log('Configuring authority')
-    const signature =  await connection.requestAirdrop(authority.publicKey, LAMPORTS_PER_SOL * 1000);
     const blockHash = await connection.getRecentBlockhash('confirmed');
-    const blockHeight = await connection.getBlockHeight('confirmed')
-    await connection.confirmTransaction({signature: signature, blockhash: blockHash.blockhash, lastValidBlockHeight: blockHeight});
+    const blockHeight = await connection.getBlockHeight('confirmed');
+    const signature =  await connection.requestAirdrop(authority.publicKey, LAMPORTS_PER_SOL * 1000);
+    await connection.confirmTransaction(signature, 'confirmed');
     const beginSlot = await connection.getSlot();
     console.log('Creating Mango Cookie')
     const mangoProgramId = new PublicKey('BXhdkETgbHrr5QmVBT1xbz3JrMM28u5djbVtmTUfmFTH')
@@ -34,7 +34,7 @@ export async function main() {
     try{
         const mangoUtils = new MangoUtils(connection, authority, mangoProgramId, dexProgramId);
 
-        const cookie = await mangoUtils.createMangoCookie(['SOL', 'BTC', 'ETH', 'AVAX', 'SRM', 'FTT', 'RAY', 'MNGO', 'BNB', 'GMT', 'ADA'])
+        const cookie = await mangoUtils.createMangoCookie(['MNGO', 'SOL', 'BTC', 'ETH', 'AVAX', 'SRM', 'FTT', 'RAY', 'MNGO', 'BNB', 'GMT', 'ADA'])
         
         console.log('Creating ids.json');
         const json =  mangoUtils.convertCookie2Json(cookie)

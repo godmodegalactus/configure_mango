@@ -246,7 +246,7 @@ function convertPriceStatus(status: string): number {
 
 function getPriceDataWithDefaults({
     version = pyth.Version2,
-    type = 0,
+    type = 3,
     size = PRICE_ACCOUNT_SIZE,
     priceType = "price",
     exponent = 0,
