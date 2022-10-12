@@ -6,6 +6,12 @@ From the root directory of this project do:
 To install all the dependancies
 `npm install`
 
+To start a solana test validator
+`sh start-test-validator.sh`
+Or
+To start a local solana validator
+`sh configure_local.sh`
+
 To configure mango
 `ts-node index.ts`
 
