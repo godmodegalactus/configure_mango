@@ -10,7 +10,7 @@ From the root directory of this project do:
 
 To install all the dependencies : 
 ```sh
-npm install
+npm install && yarn add @blockworks-foundation/mango-client
 ```
 
 To start a solana test validator
