@@ -7,6 +7,14 @@
 #
 # Prefer possible `cargo build` binaries over PATH binaries
 
+# ctrl-c trap to stop child processes
+trap ctrl_c INT
+function ctrl_c() {
+    echo "Kill them all"
+    pkill -P $$
+    exit 1
+}
+
 export RUST_LOG=${RUST_LOG:-solana=info,solana_runtime::message_processor=debug} # if RUST_LOG is unset, default to info
 export RUST_BACKTRACE=1
 dataDir=$PWD/config
