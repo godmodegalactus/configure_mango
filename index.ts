@@ -5,8 +5,9 @@ import * as fs from 'fs';
 import { web3 } from "@project-serum/anchor";
 
 export async function main() {
-    const connection = new Connection('http://localhost:8899', 'confirmed');
-    console.log('Connecting to cluster')
+    const endpoint = process.env.ENDPOINT_URL || 'http://localhost:8899';
+    const connection = new Connection(endpoint, 'confirmed');
+    console.log('Connecting to cluster ' + endpoint)
     const authority = Keypair.generate();
 
 
