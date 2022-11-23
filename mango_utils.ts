@@ -631,7 +631,6 @@ export class MangoUtils {
         nodeBanks : mango_client_v3.NodeBank[],
         fundingAccounts : PublicKey[],
     ): Promise<MangoUser> {
-        console.log("Creating User")
         const user = Keypair.generate();
 
         await this.conn.requestAirdrop(
@@ -688,7 +687,6 @@ export class MangoUtils {
             await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
         }
 
-        console.log("Created User")
         return { kp: user, mangoAddress: mangoAcc };
     }
 
