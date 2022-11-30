@@ -82,14 +82,14 @@ export class MangoUtils {
     private mangoProgramId: PublicKey;
     private dexProgramId: PublicKey;
 
-    constructor(conn: Connection, authority: Keypair, mangoProgramId: PublicKey, dexProgramId: PublicKey,) {
+    constructor(conn: Connection, authority: Keypair, mangoProgramId: PublicKey, dexProgramId: PublicKey, pythProgramId: PublicKey) {
         this.conn = conn;
         this.authority = authority;
         this.mangoProgramId = mangoProgramId;
         this.dexProgramId = dexProgramId;
 
         this.serumUtils = new SerumUtils(conn, authority, dexProgramId);
-        this.mintUtils = new MintUtils(conn, authority, dexProgramId);
+        this.mintUtils = new MintUtils(conn, authority, dexProgramId, pythProgramId);
         this.mangoClient = new mango_client_v3.MangoClient(conn, mangoProgramId);
     }
 

@@ -56,9 +56,9 @@ export interface Ema {
 }
 export class PythUtils {
 
-    public static programId: PublicKey = new PublicKey("37kmCqYKw41NJxMFVDT5HanZGhwKBQTQJD5hfiYBML7Z");
     conn: Connection;
     authority: Keypair;
+    pythProgramId: PublicKey;
 
     async createAccount(size : number) : Promise<Keypair> {
         const lamports = await this.conn.getMinimumBalanceForRentExemption(size);
@@ -70,7 +70,7 @@ export class PythUtils {
                 newAccountPubkey: address.publicKey,
                 lamports,
                 space: size,
-                programId : PythUtils.programId,
+                programId : this.pythProgramId,
             }))
 
         transaction.feePayer = this.authority.publicKey;
@@ -99,7 +99,7 @@ export class PythUtils {
         const transaction = new anchor.web3.Transaction().add(
             new anchor.web3.TransactionInstruction({
                 keys,
-                programId: PythUtils.programId,
+                programId : this.pythProgramId,
                 data
             }
             ),
@@ -116,9 +116,10 @@ export class PythUtils {
         );
     }
 
-    constructor(conn: Connection, authority: Keypair) {
+    constructor(conn: Connection, authority: Keypair, pythProgramId: PublicKey) {
         this.conn = conn;
         this.authority = authority;
+        this.pythProgramId = pythProgramId;
     }
 
     async createPriceAccount(): Promise<Keypair> {

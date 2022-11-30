@@ -38,7 +38,7 @@ export async function main() {
     }
 
     try {
-        const mangoUtils = new MangoUtils(connection, authority, mangoProgramId, dexProgramId);
+        const mangoUtils = new MangoUtils(connection, authority, mangoProgramId, dexProgramId, pythProgramId);
 
         const cookie = await mangoUtils.createMangoCookie(['MNGO', 'SOL', 'BTC', 'ETH', 'AVAX', 'SRM', 'FTT', 'RAY', 'MNGO', 'BNB', 'GMT', 'ADA'])
 
