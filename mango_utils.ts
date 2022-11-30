@@ -19,7 +19,6 @@ import {
     Signer,
 } from '@solana/web3.js';
 import { SerumUtils, } from "./serum_utils";
-import { PythUtils } from "./pyth_utils";
 import { MintUtils, TokenData, } from './mint_utils';
 import { BN } from 'bn.js';
 import {
