@@ -3,13 +3,21 @@ import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.j
 import { sleep } from "@blockworks-foundation/mango-client";
 import * as fs from 'fs';
 import { web3 } from "@project-serum/anchor";
+import { readFileSync }  from 'fs';
+
+function getProgramMap(): Map<String, String> {
+    var file = "";
+    if (process.env.CLUSTER == "testnet") {
+        file = readFileSync('./testnet-program-name-to-id.json', 'utf-8');
+    } else {
+        file = readFileSync('./genesis-program-name-to-id.json', 'utf-8');
+    };
+    return JSON.parse(file);
+}
 
 export async function main() {
-    if process.env.CLUSTER == "testnet" {
-        import programNameToId from "./testnet-program-name-to-id.json"
-    } else {
-        import programNameToId from "./genesis-program-name-to-id.json"
-    }
+    const programNameToId = getProgramMap();
+
     const endpoint = process.env.ENDPOINT_URL || 'http://127.0.0.1:8899';
     const connection = new Connection(endpoint, 'confirmed');
     console.log('Connecting to cluster ' + endpoint)
