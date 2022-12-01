@@ -27,12 +27,12 @@ export class MintUtils {
     private serumUtils : SerumUtils;
 
 
-    constructor(conn: Connection, authority: Keypair, dexProgramId: PublicKey) {
+    constructor(conn: Connection, authority: Keypair, dexProgramId: PublicKey, pythProgramId: PublicKey) {
         this.conn = conn;
         this.authority = authority;
         this.recentBlockhash = "";
-        this.pythUtils = new PythUtils(conn, authority)
-        this.serumUtils = new SerumUtils(conn, authority, dexProgramId)
+        this.pythUtils = new PythUtils(conn, authority, pythProgramId);
+        this.serumUtils = new SerumUtils(conn, authority, dexProgramId);
     }
 
     async createMint(nb_decimals = 6) : Promise<PublicKey> {

@@ -19,7 +19,6 @@ import {
     Signer,
 } from '@solana/web3.js';
 import { SerumUtils, } from "./serum_utils";
-import { PythUtils } from "./pyth_utils";
 import { MintUtils, TokenData, } from './mint_utils';
 import { BN } from 'bn.js';
 import {
@@ -82,14 +81,14 @@ export class MangoUtils {
     private mangoProgramId: PublicKey;
     private dexProgramId: PublicKey;
 
-    constructor(conn: Connection, authority: Keypair, mangoProgramId: PublicKey, dexProgramId: PublicKey,) {
+    constructor(conn: Connection, authority: Keypair, mangoProgramId: PublicKey, dexProgramId: PublicKey, pythProgramId: PublicKey) {
         this.conn = conn;
         this.authority = authority;
         this.mangoProgramId = mangoProgramId;
         this.dexProgramId = dexProgramId;
 
         this.serumUtils = new SerumUtils(conn, authority, dexProgramId);
-        this.mintUtils = new MintUtils(conn, authority, dexProgramId);
+        this.mintUtils = new MintUtils(conn, authority, dexProgramId, pythProgramId);
         this.mangoClient = new mango_client_v3.MangoClient(conn, mangoProgramId);
     }
 

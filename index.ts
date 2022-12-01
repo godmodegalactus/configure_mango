@@ -3,8 +3,21 @@ import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.j
 import { sleep } from "@blockworks-foundation/mango-client";
 import * as fs from 'fs';
 import { web3 } from "@project-serum/anchor";
+import { readFileSync }  from 'fs';
+
+function getProgramMap(): Map<String, String> {
+    var file = "";
+    if (process.env.CLUSTER == "testnet") {
+        file = readFileSync('./testnet-program-name-to-id.json', 'utf-8');
+    } else {
+        file = readFileSync('./genesis-program-name-to-id.json', 'utf-8');
+    };
+    return JSON.parse(file);
+}
 
 export async function main() {
+    const programNameToId = getProgramMap();
+
     const endpoint = process.env.ENDPOINT_URL || 'http://127.0.0.1:8899';
     const connection = new Connection(endpoint, 'confirmed');
     console.log('Connecting to cluster ' + endpoint)
@@ -18,8 +31,9 @@ export async function main() {
     await connection.confirmTransaction(signature, 'confirmed');
     const beginSlot = await connection.getSlot();
     console.log('Creating Mango Cookie')
-    const mangoProgramId = new PublicKey('BXhdkETgbHrr5QmVBT1xbz3JrMM28u5djbVtmTUfmFTH')
-    const dexProgramId = new PublicKey('3qx9WcNPw4jj3v1kJbWoxSN2ZAakwUXFu9HDr2QjQ6xq');
+    const mangoProgramId = new PublicKey(programNameToId['mango'])
+    const dexProgramId = new PublicKey(programNameToId['serum_dex']);
+    const pythProgramId = new PublicKey(programNameToId['pyth_mock']);
 
     let logId = 0
     if (do_log) {
@@ -36,7 +50,7 @@ export async function main() {
     }
 
     try {
-        const mangoUtils = new MangoUtils(connection, authority, mangoProgramId, dexProgramId);
+        const mangoUtils = new MangoUtils(connection, authority, mangoProgramId, dexProgramId, pythProgramId);
 
         const cookie = await mangoUtils.createMangoCookie(['MNGO', 'SOL', 'BTC', 'ETH', 'AVAX', 'SRM', 'FTT', 'RAY', 'MNGO', 'BNB', 'GMT', 'ADA'])
 
