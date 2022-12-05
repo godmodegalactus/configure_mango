@@ -17,6 +17,7 @@ export function getProgramMap(cluster : Cluster): Map<String, String> {
 
 export async function main() {
     
+    // cluster should be in 'devnet' | 'mainnet' | 'localnet' | 'testnet'  
     const cluster = (process.env.CLUSTER || 'localnet') as Cluster;
 
     const programNameToId = getProgramMap(cluster);
