@@ -74,7 +74,7 @@ export async function main() {
         const nbUsersStr = process.env.NB_USERS || "50";
         const nbUsers : number = +nbUsersStr;
         console.log('Creating ' + nbUsers + ' Users');
-        const users = (await mangoUtils.createAndMintUsers(cookie, 50, authority)).map(x => {
+        const users = (await mangoUtils.createAndMintUsers(cookie, nbUsers, authority)).map(x => {
             const info = {};
             info['publicKey'] = x.kp.publicKey.toBase58();
             info['secretKey'] = Array.from(x.kp.secretKey);

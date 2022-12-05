@@ -725,7 +725,7 @@ export class MangoUtils {
             )
             tmpAccounts[tokenIte[1].marketIndex] = acc
         }
-        // create 50 users
+        // create users
         // let users : MangoUser[] = [];
         // for ( let i=0 ; i< nbUsers ; ++i ){
         //     let user = await this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts, authority);
