@@ -36,6 +36,7 @@ import {
     PerpMarketLayout,
     makeAddPerpMarketInstruction,
     makeDepositInstruction,
+    Config as MangoConfig,
     sleep
 } from '@blockworks-foundation/mango-client';
 import { token } from '@project-serum/anchor/dist/cjs/utils';
@@ -546,7 +547,7 @@ export class MangoUtils {
         }
     }
 
-    convertCookie2Json(mangoCookie: MangoCookie) {
+    convertCookie2Json(mangoCookie: MangoCookie, cluster: Cluster) {
         const oracles = Array.from(mangoCookie.tokens).map(x => {
             const oracle: OracleConfig = {
                 publicKey: x[1].priceOracle.publicKey,
@@ -598,9 +599,9 @@ export class MangoUtils {
         })
 
         const groupConfig: GroupConfig = {
-            cluster: 'localnet',
+            cluster,
             mangoProgramId: this.mangoProgramId,
-            name: 'localnet',
+            name: cluster,
             publicKey: mangoCookie.mangoGroup,
             quoteSymbol: "USDC",
             oracles: oracles,
@@ -629,12 +630,20 @@ export class MangoUtils {
         rootBanks : mango_client_v3.RootBank[],
         nodeBanks : mango_client_v3.NodeBank[],
         fundingAccounts : PublicKey[],
+        authority: Keypair,
     ): Promise<MangoUser> {
         const user = Keypair.generate();
 
-        await this.conn.requestAirdrop(
-            user.publicKey,
-            LAMPORTS_PER_SOL * 100);
+        // transfer 1 sol to the user
+        {
+            const ix = SystemProgram.transfer({
+                fromPubkey: authority.publicKey,
+                lamports : LAMPORTS_PER_SOL,
+                programId: anchor.web3.SystemProgram.programId,
+                toPubkey: user.publicKey,
+            })
+            await anchor.web3.sendAndConfirmTransaction( this.conn, new Transaction().add(ix), [authority]);
+        }
 
         const mangoAcc = await this.mangoClient.createMangoAccount(
             mangoGroup,
@@ -689,7 +698,7 @@ export class MangoUtils {
         return { kp: user, mangoAddress: mangoAcc };
     }
 
-    public async createAndMintUsers(mangoCookie: MangoCookie, nbUsers: number): Promise<MangoUser[]> {
+    public async createAndMintUsers(mangoCookie: MangoCookie, nbUsers: number, authority : Keypair): Promise<MangoUser[]> {
         const mangoGroup = await this.getMangoGroup(mangoCookie)
         const rootBanks = await mangoGroup.loadRootBanks(this.conn)
         const nodeBanksList = await Promise.all(rootBanks.filter(x => x != undefined).map(x => x.loadNodeBanks(this.conn)))
@@ -716,8 +725,13 @@ export class MangoUtils {
             )
             tmpAccounts[tokenIte[1].marketIndex] = acc
         }
-        // create 50 users
-        let users = await Promise.all( [...Array(nbUsers)].map(_x => this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts)));
+        // create users
+        // let users : MangoUser[] = [];
+        // for ( let i=0 ; i< nbUsers ; ++i ){
+        //     let user = await this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts, authority);
+        //     users.push(user)
+        // }
+        let users = await Promise.all( [...Array(nbUsers)].map(_x => this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts, authority)));
         return users;
     }
 }

@@ -1,13 +1,13 @@
 import { MangoUtils } from "./mango_utils";
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
-import { sleep } from "@blockworks-foundation/mango-client";
+import { sleep, Cluster } from "@blockworks-foundation/mango-client";
 import * as fs from 'fs';
 import { web3 } from "@project-serum/anchor";
 import { readFileSync }  from 'fs';
 
-function getProgramMap(): Map<String, String> {
+export function getProgramMap(cluster : Cluster): Map<String, String> {
     var file = "";
-    if (process.env.CLUSTER == "testnet") {
+    if (cluster == "testnet") {
         file = readFileSync('./testnet-program-name-to-id.json', 'utf-8');
     } else {
         file = readFileSync('./genesis-program-name-to-id.json', 'utf-8');
@@ -16,19 +16,31 @@ function getProgramMap(): Map<String, String> {
 }
 
 export async function main() {
-    const programNameToId = getProgramMap();
+    
+    // cluster should be in 'devnet' | 'mainnet' | 'localnet' | 'testnet'  
+    const cluster = (process.env.CLUSTER || 'localnet') as Cluster;
 
+    const programNameToId = getProgramMap(cluster);
     const endpoint = process.env.ENDPOINT_URL || 'http://127.0.0.1:8899';
     const connection = new Connection(endpoint, 'confirmed');
     console.log('Connecting to cluster ' + endpoint)
-    const authority = Keypair.generate();
-    const do_log = process.env.LOG || false;
+    const authority = Keypair.fromSecretKey(
+        Uint8Array.from(
+          JSON.parse(
+            process.env.KEYPAIR ||
+              fs.readFileSync('authority.json', 'utf-8'),
+          ),
+        ),
+      );
+    const do_log_str = process.env.LOG || "false";
+    const do_log = do_log_str === "true";
 
     console.log('Configuring authority')
-    const blockHash = await connection.getRecentBlockhash('confirmed');
-    const blockHeight = await connection.getBlockHeight('confirmed');
-    const signature = await connection.requestAirdrop(authority.publicKey, LAMPORTS_PER_SOL * 1000);
-    await connection.confirmTransaction(signature, 'confirmed');
+    const balance = await connection.getBalance(authority.publicKey)
+    if (balance < 100) {
+        const signature = await connection.requestAirdrop(authority.publicKey, LAMPORTS_PER_SOL * 1000);
+        await connection.confirmTransaction(signature, 'confirmed');
+    }
     const beginSlot = await connection.getSlot();
     console.log('Creating Mango Cookie')
     const mangoProgramId = new PublicKey(programNameToId['mango'])
@@ -55,14 +67,15 @@ export async function main() {
         const cookie = await mangoUtils.createMangoCookie(['MNGO', 'SOL', 'BTC', 'ETH', 'AVAX', 'SRM', 'FTT', 'RAY', 'MNGO', 'BNB', 'GMT', 'ADA'])
 
         console.log('Creating ids.json');
-        const json = mangoUtils.convertCookie2Json(cookie)
+        const json = mangoUtils.convertCookie2Json(cookie, cluster)
         fs.writeFileSync('ids.json', JSON.stringify(json, null, 2));
         fs.writeFileSync('authority.json', '[' + authority.secretKey.toString() + ']');
         console.log('Mango cookie created successfully')
 
-        const nbUsers = 50;
+        const nbUsersStr = process.env.NB_USERS || "50";
+        const nbUsers : number = +nbUsersStr;
         console.log('Creating ' + nbUsers + ' Users');
-        const users = (await mangoUtils.createAndMintUsers(cookie, 50)).map(x => {
+        const users = (await mangoUtils.createAndMintUsers(cookie, nbUsers, authority)).map(x => {
             const info = {};
             info['publicKey'] = x.kp.publicKey.toBase58();
             info['secretKey'] = Array.from(x.kp.secretKey);
