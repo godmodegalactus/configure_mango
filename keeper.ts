@@ -94,9 +94,10 @@ async function main() {
   const do_log = do_log_str === "true";
   let logId = 0
   if (do_log) {
+      console.log("LOGGING ON");
       logId = connection.onLogs(mangoProgramId, (log, ctx) => {
           if (log.err != null) {
-              console.log("mango error : " + log.err.toString())
+              console.log("mango error : ", log.err)
           }
           else {
               for (const l of log.logs) {
