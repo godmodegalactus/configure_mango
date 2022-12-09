@@ -51,7 +51,7 @@ export async function main() {
     if (do_log) {
         logId = connection.onLogs(mangoProgramId, (log, ctx) => {
             if (log.err != null) {
-                console.log("mango error : " + log.err.toString())
+                console.log("mango error : ", log.err)
             }
             else {
                 for (const l of log.logs) {
