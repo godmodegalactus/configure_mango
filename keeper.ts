@@ -23,7 +23,8 @@ import {
   Config,
   PerpEventQueueLayout,
   MangoGroup, PerpMarket, promiseUndef,
-  PerpEventQueue
+  PerpEventQueue,
+  sleep
 } from "@blockworks-foundation/mango-client";
 import BN from 'bn.js';
 
@@ -89,12 +90,51 @@ async function main() {
     }),
   );
 
-  processUpdateCache(mangoGroup);
-  processKeeperTransactions(mangoGroup, perpMarkets);
-
-  if (consumeEvents) {
-    processConsumeEvents(mangoGroup, perpMarkets);
+  const do_log_str = process.env.LOG || "false";
+  const do_log = do_log_str === "true";
+  let logId = 0
+  if (do_log) {
+      logId = connection.onLogs(mangoProgramId, (log, ctx) => {
+          if (log.err != null) {
+              console.log("mango error : " + log.err.toString())
+          }
+          else {
+              for (const l of log.logs) {
+                  console.log("mango log : " + l)
+              }
+          }
+      });
   }
+  const beginSlot = await connection.getSlot();
+
+  try {
+      processUpdateCache(mangoGroup);
+      processKeeperTransactions(mangoGroup, perpMarkets);
+
+      if (consumeEvents) {
+          processConsumeEvents(mangoGroup, perpMarkets);
+      }
+  } finally {
+        if (logId) {
+            // to log mango logs
+            await sleep(5000)
+            const endSlot = await connection.getSlot();
+            const blockSlots = await connection.getBlocks(beginSlot, endSlot);
+            console.log("\n\n===============================================")
+            for (let blockSlot of blockSlots) {
+                const block = await connection.getBlock(blockSlot);
+                for (let i = 0; i < block.transactions.length; ++i) {
+                    if (block.transactions[i].meta.logMessages) {
+                        for (const msg of block.transactions[i].meta.logMessages) {
+                            console.log('solana_message : ' + msg);
+                        }
+                    }
+                }
+            }
+
+            connection.removeOnLogsListener(logId);
+        }
+    }
 }
 console.time('processUpdateCache');
 
