@@ -45,9 +45,8 @@ const consumeEventsInterval = parseInt(
 );
 const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '10');
 const consumeEventsLimit = new BN(process.env.CONSUME_EVENTS_LIMIT || '20');
-const consumeEvents = process.env.CONSUME_EVENTS
-  ? process.env.CONSUME_EVENTS === 'true'
-  : true;
+const consumeEvents = process.env.CONSUME_EVENTS ? process.env.CONSUME_EVENTS === 'true' : true;
+const skipPreflight = process.env.SKIP_PREFLIGHT ? process.env.SKIP_PREFLIGHT === 'true' : false;
 const cluster = (process.env.CLUSTER || 'localnet') as Cluster;
 import configFile from './ids.json';
 const config = new Config(configFile);
@@ -193,7 +192,7 @@ async function processUpdateCache(mangoGroup: MangoGroup) {
         ),
       );
       if (cacheTransaction.instructions.length > 0) {
-        promises.push(connection.sendTransaction(cacheTransaction, [payer]));
+        promises.push(connection.sendTransaction(cacheTransaction, [payer], {skipPreflight}));
       }
     }
 
@@ -271,7 +270,7 @@ async function processConsumeEvents(
         const transaction = new Transaction();
         transaction.add(consumeEventsInstruction);
 
-        return connection.sendTransaction(transaction, [payer])
+        return connection.sendTransaction(transaction, [payer], {skipPreflight})
           .catch((err) => {
             console.error('Error consuming events', err);
           });
@@ -344,12 +343,12 @@ async function processKeeperTransactions(
 
       if (updateRootBankTransaction.instructions.length > 0) {
         promises.push(
-          connection.sendTransaction(updateRootBankTransaction, [payer]),
+          connection.sendTransaction(updateRootBankTransaction, [payer], {skipPreflight}),
         );
       }
       if (updateFundingTransaction.instructions.length > 0) {
         promises.push(
-          connection.sendTransaction(updateFundingTransaction, [payer]),
+          connection.sendTransaction(updateFundingTransaction, [payer], {skipPreflight}),
         );
       }
     }
