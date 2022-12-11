@@ -41,10 +41,10 @@ const processKeeperInterval = parseInt(
   process.env.PROCESS_KEEPER_INTERVAL || '10000',
 );
 const consumeEventsInterval = parseInt(
-  process.env.CONSUME_EVENTS_INTERVAL || '1000',
+  process.env.CONSUME_EVENTS_INTERVAL || '100',
 );
 const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '10');
-const consumeEventsLimit = new BN(process.env.CONSUME_EVENTS_LIMIT || '10');
+const consumeEventsLimit = new BN(process.env.CONSUME_EVENTS_LIMIT || '20');
 const consumeEvents = process.env.CONSUME_EVENTS
   ? process.env.CONSUME_EVENTS === 'true'
   : true;
