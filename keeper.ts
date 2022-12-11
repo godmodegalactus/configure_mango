@@ -24,7 +24,8 @@ import {
   PerpEventQueueLayout,
   MangoGroup, PerpMarket, promiseUndef,
   PerpEventQueue,
-  sleep
+  sleep,
+  makeConsumeEventsInstruction
 } from "@blockworks-foundation/mango-client";
 import BN from 'bn.js';
 
@@ -190,7 +191,7 @@ async function processUpdateCache(mangoGroup: MangoGroup) {
         ),
       );
       if (cacheTransaction.instructions.length > 0) {
-        promises.push(client.sendTransaction(cacheTransaction, payer, []));
+        promises.push(connection.sendTransaction(cacheTransaction, [payer]));
       }
     }
 
@@ -253,27 +254,21 @@ async function processConsumeEvents(
           }
         }
 
-        return client
-          .consumeEvents(
-            mangoGroup,
-            perpMarket,
-            Array.from(accounts)
-              .map((s) => new PublicKey(s))
-              .sort(),
-            payer,
-            consumeEventsLimit,
-          )
-          .then(() => {
-            console.log(
-              `Consumed up to ${
-                events.length
-              } events ${perpMarket.publicKey.toBase58()}`,
-            );
-            console.log(
-              'EVENTS:',
-              events.map((e) => e?.fill?.seqNum.toString()),
-            );
-          })
+        const consumeEventsInstruction = makeConsumeEventsInstruction(
+          this.programId,
+          mangoGroup.publicKey,
+          mangoGroup.mangoCache,
+          perpMarket.publicKey,
+          perpMarket.eventQueue,
+          Array.from(accounts)
+          .map((s) => new PublicKey(s))
+          .sort(),          consumeEventsLimit,
+        );
+
+        const transaction = new Transaction();
+        transaction.add(consumeEventsInstruction);
+
+        return connection.sendTransaction(transaction, [payer])
           .catch((err) => {
             console.error('Error consuming events', err);
           });
@@ -346,12 +341,12 @@ async function processKeeperTransactions(
 
       if (updateRootBankTransaction.instructions.length > 0) {
         promises.push(
-          client.sendTransaction(updateRootBankTransaction, payer, []),
+          connection.sendTransaction(updateRootBankTransaction, [payer]),
         );
       }
       if (updateFundingTransaction.instructions.length > 0) {
         promises.push(
-          client.sendTransaction(updateFundingTransaction, payer, []),
+          connection.sendTransaction(updateFundingTransaction, [payer]),
         );
       }
     }
