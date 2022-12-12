@@ -1,6 +1,7 @@
 {
   "devDependencies": {
-    "typescript": "^4.8.3"
+    "typescript": "^4.8.3",
+    "ts-node": "^10.9.1"
   },
   "dependencies": {
     "@blockworks-foundation/mango-client": "^3.6.20",
@@ -8,8 +9,7 @@
     "@project-serum/serum": "^0.13.65",
     "@pythnetwork/client": "^2.8.0",
     "@solana/spl-token": "^0.3.5",
-    "@solana/web3.js": "^1.62.0",
-    "ts-node": "^10.9.1",
+    "@solana/web3.js": "^1.70.1",
     "yarn": "^1.22.19"
   }
 }

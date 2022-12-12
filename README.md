@@ -10,7 +10,7 @@ From the root directory of this project do:
 
 To install all the dependencies : 
 ```sh
-npm install && yarn add @blockworks-foundation/mango-client
+yarn install
 ```
 
 To start a solana test validator
@@ -25,12 +25,12 @@ sh configure_local.sh
 
 To configure mango
 ```sh
-ts-node index.ts
+yarn ts-node index.ts
 ```
 
 To run mango keeper
 ```sh
-ts-node keeper.ts
+yarn ts-node keeper.ts
 ```
 
 Pyth oracle is a mock it is a program which will just rewrite an account with a binary data.
