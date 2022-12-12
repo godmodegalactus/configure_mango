@@ -257,7 +257,7 @@ async function processConsumeEvents(
         }
 
         const consumeEventsInstruction = makeConsumeEventsInstruction(
-          this.programId,
+          mangoProgramId,
           mangoGroup.publicKey,
           mangoGroup.mangoCache,
           perpMarket.publicKey,
