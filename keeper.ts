@@ -142,8 +142,6 @@ console.time('processKeeperTransactions');
 console.time('processConsumeEvents');
 
 async function processUpdateCache(mangoGroup: MangoGroup) {
-  console.timeLog('processUpdateCache');
-
   try {
     const batchSize = 8;
     const promises: Promise<string>[] = [];
@@ -211,7 +209,6 @@ async function processConsumeEvents(
   mangoGroup: MangoGroup,
   perpMarkets: PerpMarket[],
 ) {
-  console.timeLog('processConsumeEvents')
   try {
     const eventQueuePks = perpMarkets.map((mkt) => mkt.eventQueue);
     const eventQueueAccts = await getMultipleAccounts(
@@ -283,6 +280,7 @@ async function processConsumeEvents(
   } catch (err) {
     console.error('Error in processConsumeEvents', err);
   } finally {
+    console.timeLog('processConsumeEvents')
     setTimeout(
       processConsumeEvents,
       consumeEventsInterval,
@@ -300,7 +298,6 @@ async function processKeeperTransactions(
     if (!groupIds) {
       throw new Error(`Group ${groupName} not found`);
     }
-    console.timeLog('processKeeperTransactions');
     const batchSize = 8;
     const promises: Promise<string>[] = [];
 
@@ -359,6 +356,7 @@ async function processKeeperTransactions(
   } catch (err) {
     console.error('Error in processKeeperTransactions', err);
   } finally {
+    console.timeLog('processKeeperTransactions');
     setTimeout(
       processKeeperTransactions,
       processKeeperInterval,
