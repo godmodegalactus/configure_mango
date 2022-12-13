@@ -43,7 +43,7 @@ const processKeeperInterval = parseInt(
 const consumeEventsInterval = parseInt(
   process.env.CONSUME_EVENTS_INTERVAL || '100',
 );
-const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '10');
+const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '24');
 const consumeEventsLimit = new BN(process.env.CONSUME_EVENTS_LIMIT || '20');
 const consumeEvents = process.env.CONSUME_EVENTS ? process.env.CONSUME_EVENTS === 'true' : true;
 const skipPreflight = process.env.SKIP_PREFLIGHT ? process.env.SKIP_PREFLIGHT === 'true' : false;
