@@ -8,14 +8,14 @@ From the root directory of this project do:
 
 ## How to use
 
-To install all the dependencies : 
+To install all the dependencies :
 ```sh
 yarn install
 ```
 
 To start a solana test validator
 ```sh
-sh start-test-validator.sh
+sh start_test_validator.sh
 ```
 Or
 To start a local solana validator
