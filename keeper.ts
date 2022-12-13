@@ -43,7 +43,7 @@ const processKeeperInterval = parseInt(
 const consumeEventsInterval = parseInt(
   process.env.CONSUME_EVENTS_INTERVAL || '100',
 );
-const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '10');
+const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '24');
 const consumeEventsLimit = new BN(process.env.CONSUME_EVENTS_LIMIT || '20');
 const consumeEvents = process.env.CONSUME_EVENTS ? process.env.CONSUME_EVENTS === 'true' : true;
 const skipPreflight = process.env.SKIP_PREFLIGHT ? process.env.SKIP_PREFLIGHT === 'true' : false;
@@ -142,8 +142,6 @@ console.time('processKeeperTransactions');
 console.time('processConsumeEvents');
 
 async function processUpdateCache(mangoGroup: MangoGroup) {
-  console.timeLog('processUpdateCache');
-
   try {
     const batchSize = 8;
     const promises: Promise<string>[] = [];
@@ -211,7 +209,6 @@ async function processConsumeEvents(
   mangoGroup: MangoGroup,
   perpMarkets: PerpMarket[],
 ) {
-  console.timeLog('processConsumeEvents')
   try {
     const eventQueuePks = perpMarkets.map((mkt) => mkt.eventQueue);
     const eventQueueAccts = await getMultipleAccounts(
@@ -283,6 +280,7 @@ async function processConsumeEvents(
   } catch (err) {
     console.error('Error in processConsumeEvents', err);
   } finally {
+    console.timeLog('processConsumeEvents')
     setTimeout(
       processConsumeEvents,
       consumeEventsInterval,
@@ -300,7 +298,6 @@ async function processKeeperTransactions(
     if (!groupIds) {
       throw new Error(`Group ${groupName} not found`);
     }
-    console.timeLog('processKeeperTransactions');
     const batchSize = 8;
     const promises: Promise<string>[] = [];
 
@@ -359,6 +356,7 @@ async function processKeeperTransactions(
   } catch (err) {
     console.error('Error in processKeeperTransactions', err);
   } finally {
+    console.timeLog('processKeeperTransactions');
     setTimeout(
       processKeeperTransactions,
       processKeeperInterval,
