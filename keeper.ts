@@ -28,7 +28,6 @@ import {
   makeConsumeEventsInstruction
 } from "@blockworks-foundation/mango-client";
 import BN from 'bn.js';
-import { PythUtils } from './pyth_utils';
 
 let lastRootBankCacheUpdate = 0;
 const groupName = process.env.GROUP || 'localnet';
