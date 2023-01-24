@@ -28,17 +28,18 @@ import {
   makeConsumeEventsInstruction
 } from "@blockworks-foundation/mango-client";
 import BN from 'bn.js';
+import { PythUtils } from './pyth_utils';
 
 let lastRootBankCacheUpdate = 0;
 const groupName = process.env.GROUP || 'localnet';
 const updateCacheInterval = parseInt(
-  process.env.UPDATE_CACHE_INTERVAL || '3000',
+  process.env.UPDATE_CACHE_INTERVAL || '2000',
 );
 const updateRootBankCacheInterval = parseInt(
-  process.env.UPDATE_ROOT_BANK_CACHE_INTERVAL || '5000',
+  process.env.UPDATE_ROOT_BANK_CACHE_INTERVAL || '3000',
 );
 const processKeeperInterval = parseInt(
-  process.env.PROCESS_KEEPER_INTERVAL || '10000',
+  process.env.PROCESS_KEEPER_INTERVAL || '3000',
 );
 const consumeEventsInterval = parseInt(
   process.env.CONSUME_EVENTS_INTERVAL || '100',
@@ -46,7 +47,7 @@ const consumeEventsInterval = parseInt(
 const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '24');
 const consumeEventsLimit = new BN(process.env.CONSUME_EVENTS_LIMIT || '20');
 const consumeEvents = process.env.CONSUME_EVENTS ? process.env.CONSUME_EVENTS === 'true' : true;
-const skipPreflight = process.env.SKIP_PREFLIGHT ? process.env.SKIP_PREFLIGHT === 'true' : false;
+const skipPreflight = process.env.SKIP_PREFLIGHT ? process.env.SKIP_PREFLIGHT === 'true' : true;
 const cluster = (process.env.CLUSTER || 'localnet') as Cluster;
 import configFile from './ids.json';
 const config = new Config(configFile);
@@ -158,10 +159,19 @@ async function processUpdateCache(mangoGroup: MangoGroup) {
       shouldUpdateRootBankCache = true;
       lastRootBankCacheUpdate = nowTs;
     }
-    for (let i = 0; i < rootBanks.length / batchSize; i++) {
+    for (let i = 0; i < Math.ceil(rootBanks.length / batchSize); i++) {
       const startIndex = i * batchSize;
-      const endIndex = i * batchSize + batchSize;
+      const endIndex = Math.min(i * batchSize + batchSize, rootBanks.length);
       const cacheTransaction = new Transaction();
+      cacheTransaction.add(
+        makeCachePricesInstruction(
+          mangoProgramId,
+          mangoGroup.publicKey,
+          mangoGroup.mangoCache,
+          oracles.slice(startIndex, endIndex),
+        ),
+      );
+
       if (shouldUpdateRootBankCache) {
         cacheTransaction.add(
           makeCacheRootBankInstruction(
@@ -172,14 +182,6 @@ async function processUpdateCache(mangoGroup: MangoGroup) {
           ),
         );
       }
-      cacheTransaction.add(
-        makeCachePricesInstruction(
-          mangoProgramId,
-          mangoGroup.publicKey,
-          mangoGroup.mangoCache,
-          oracles.slice(startIndex, endIndex),
-        ),
-      );
 
       cacheTransaction.add(
         makeCachePerpMarketsInstruction(
