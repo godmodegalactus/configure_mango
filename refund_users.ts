@@ -28,7 +28,7 @@ export async function main(users: Users[],
     const endpoint = process.env.ENDPOINT_URL || 'http://localhost:8899';
     const connection = new Connection(endpoint, 'confirmed');
 
-    let accounts_to_fund = new Set<[Users, number]>();
+    let accounts_to_fund = new Array<[Users, number]>();
     try {
         for (let i = 0; i <= n_try; i++) {
             if (i > 0) {
@@ -43,12 +43,11 @@ export async function main(users: Users[],
                 }
                 const balance = await Promise.all(promises);
                 users.forEach( (cur_account, index) =>  {
-                    console.log(balance[index]);
                     if (balance[index] < LAMPORTS_PER_SOL * targetBalance) {
-                        accounts_to_fund.add([cur_account, balance[index]]);
+                        accounts_to_fund.push([cur_account, balance[index]]);
                     }
                 });
-                if (accounts_to_fund.size == 0) {
+                if (accounts_to_fund.length == 0) {
                     return Result.SUCCESS; 
                 }
             }
@@ -70,7 +69,7 @@ export async function main(users: Users[],
                 }
                 const result = await Promise.all(promises);
             }
-            accounts_to_fund.clear();
+            accounts_to_fund.length = 0;
         }
     } catch(e) {
         console.log('caught an error : ' + e)
