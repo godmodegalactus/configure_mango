@@ -67,7 +67,12 @@ export async function main(users: Users[],
                     console.log("Fund for " + (LAMPORTS_PER_SOL * targetBalance - balance)/LAMPORTS_PER_SOL + "");
                     promises.push(connection.sendTransaction(tx, [authority]))
                 }
-                const result = await Promise.all(promises);
+
+                try {
+                    const result = await Promise.all(promises);
+                } catch(e) {
+                    console.log('While sending transactions caught an error : ' + e + ". Will try again.")
+                }
             }
             accounts_to_fund.length = 0;
         }
