@@ -9,6 +9,7 @@ import {
   Connection,
   PublicKey,
   Transaction,
+  ComputeBudgetProgram
 } from '@solana/web3.js';
 import {
   MangoClient,
@@ -162,6 +163,11 @@ async function processUpdateCache(mangoGroup: MangoGroup) {
       const startIndex = i * batchSize;
       const endIndex = Math.min(i * batchSize + batchSize, rootBanks.length);
       const cacheTransaction = new Transaction();
+      const prioritizationFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 1000
+      });
+
+      cacheTransaction.add(prioritizationFeeIx);
       cacheTransaction.add(
         makeCachePricesInstruction(
           mangoProgramId,
@@ -265,7 +271,12 @@ async function processConsumeEvents(
           .sort(),          consumeEventsLimit,
         );
 
+        const prioritizationFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
+          microLamports: 100
+        });
+
         const transaction = new Transaction();
+        transaction.add(prioritizationFeeIx);
         transaction.add(consumeEventsInstruction);
 
         return connection.sendTransaction(transaction, [payer], {skipPreflight})
