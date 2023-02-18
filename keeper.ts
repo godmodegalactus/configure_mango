@@ -9,6 +9,7 @@ import {
   Connection,
   PublicKey,
   Transaction,
+  ComputeBudgetProgram
 } from '@solana/web3.js';
 import {
   MangoClient,
@@ -32,21 +33,21 @@ import BN from 'bn.js';
 let lastRootBankCacheUpdate = 0;
 const groupName = process.env.GROUP || 'localnet';
 const updateCacheInterval = parseInt(
-  process.env.UPDATE_CACHE_INTERVAL || '3000',
+  process.env.UPDATE_CACHE_INTERVAL || '2000',
 );
 const updateRootBankCacheInterval = parseInt(
-  process.env.UPDATE_ROOT_BANK_CACHE_INTERVAL || '5000',
+  process.env.UPDATE_ROOT_BANK_CACHE_INTERVAL || '3000',
 );
 const processKeeperInterval = parseInt(
-  process.env.PROCESS_KEEPER_INTERVAL || '10000',
+  process.env.PROCESS_KEEPER_INTERVAL || '3000',
 );
 const consumeEventsInterval = parseInt(
   process.env.CONSUME_EVENTS_INTERVAL || '100',
 );
-const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '10');
+const maxUniqueAccounts = parseInt(process.env.MAX_UNIQUE_ACCOUNTS || '24');
 const consumeEventsLimit = new BN(process.env.CONSUME_EVENTS_LIMIT || '20');
 const consumeEvents = process.env.CONSUME_EVENTS ? process.env.CONSUME_EVENTS === 'true' : true;
-const skipPreflight = process.env.SKIP_PREFLIGHT ? process.env.SKIP_PREFLIGHT === 'true' : false;
+const skipPreflight = process.env.SKIP_PREFLIGHT ? process.env.SKIP_PREFLIGHT === 'true' : true;
 const cluster = (process.env.CLUSTER || 'localnet') as Cluster;
 import configFile from './ids.json';
 const config = new Config(configFile);
@@ -142,8 +143,6 @@ console.time('processKeeperTransactions');
 console.time('processConsumeEvents');
 
 async function processUpdateCache(mangoGroup: MangoGroup) {
-  console.timeLog('processUpdateCache');
-
   try {
     const batchSize = 8;
     const promises: Promise<string>[] = [];
@@ -160,10 +159,24 @@ async function processUpdateCache(mangoGroup: MangoGroup) {
       shouldUpdateRootBankCache = true;
       lastRootBankCacheUpdate = nowTs;
     }
-    for (let i = 0; i < rootBanks.length / batchSize; i++) {
+    for (let i = 0; i < Math.ceil(rootBanks.length / batchSize); i++) {
       const startIndex = i * batchSize;
-      const endIndex = i * batchSize + batchSize;
+      const endIndex = Math.min(i * batchSize + batchSize, rootBanks.length);
       const cacheTransaction = new Transaction();
+      const prioritizationFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 1000
+      });
+
+      cacheTransaction.add(prioritizationFeeIx);
+      cacheTransaction.add(
+        makeCachePricesInstruction(
+          mangoProgramId,
+          mangoGroup.publicKey,
+          mangoGroup.mangoCache,
+          oracles.slice(startIndex, endIndex),
+        ),
+      );
+
       if (shouldUpdateRootBankCache) {
         cacheTransaction.add(
           makeCacheRootBankInstruction(
@@ -174,14 +187,6 @@ async function processUpdateCache(mangoGroup: MangoGroup) {
           ),
         );
       }
-      cacheTransaction.add(
-        makeCachePricesInstruction(
-          mangoProgramId,
-          mangoGroup.publicKey,
-          mangoGroup.mangoCache,
-          oracles.slice(startIndex, endIndex),
-        ),
-      );
 
       cacheTransaction.add(
         makeCachePerpMarketsInstruction(
@@ -266,7 +271,12 @@ async function processConsumeEvents(
           .sort(),          consumeEventsLimit,
         );
 
+        const prioritizationFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
+          microLamports: 100
+        });
+
         const transaction = new Transaction();
+        transaction.add(prioritizationFeeIx);
         transaction.add(consumeEventsInstruction);
 
         return connection.sendTransaction(transaction, [payer], {skipPreflight})
@@ -282,6 +292,7 @@ async function processConsumeEvents(
   } catch (err) {
     console.error('Error in processConsumeEvents', err);
   } finally {
+    console.timeLog('processConsumeEvents')
     setTimeout(
       processConsumeEvents,
       consumeEventsInterval,
@@ -300,7 +311,6 @@ async function processKeeperTransactions(
     if (!groupIds) {
       throw new Error(`Group ${groupName} not found`);
     }
-    console.timeLog('processKeeperTransactions');
     const batchSize = 8;
     const promises: Promise<string>[] = [];
 
@@ -359,6 +369,7 @@ async function processKeeperTransactions(
   } catch (err) {
     console.error('Error in processKeeperTransactions', err);
   } finally {
+    console.timeLog('processKeeperTransactions');
     setTimeout(
       processKeeperTransactions,
       processKeeperInterval,
