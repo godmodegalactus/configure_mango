@@ -211,7 +211,6 @@ async function processConsumeEvents(
   mangoGroup: MangoGroup,
   perpMarkets: PerpMarket[],
 ) {
-  console.timeLog('processConsumeEvents')
   try {
     const eventQueuePks = perpMarkets.map((mkt) => mkt.eventQueue);
     const eventQueueAccts = await getMultipleAccounts(
@@ -289,6 +288,7 @@ async function processConsumeEvents(
       mangoGroup,
       perpMarkets,
     );
+    console.timeLog('processConsumeEvents');
   }
 }
 
