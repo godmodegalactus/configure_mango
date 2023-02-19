@@ -299,6 +299,7 @@ async function processConsumeEvents(
       mangoGroup,
       perpMarkets,
     );
+    console.timeLog('processConsumeEvents');
   }
 }
 

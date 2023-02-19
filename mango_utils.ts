@@ -610,6 +610,7 @@ export class MangoUtils {
             spotMarkets: spotMarkets,
             tokens: tokenConfigs,
         }
+        groupConfig["cachePk"] = mangoCookie.mangoCache
 
         const groupConfigs: GroupConfig[] = [groupConfig]
         const cluster_urls: Record<Cluster, string> = {

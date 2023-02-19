@@ -21,7 +21,7 @@ export async function main() {
     const cluster = (process.env.CLUSTER || 'localnet') as Cluster;
 
     const programNameToId = getProgramMap(cluster);
-    const endpoint = process.env.ENDPOINT_URL || 'http://localhost:8899';
+    const endpoint = process.env.ENDPOINT_URL || 'http://127.0.0.1:8899';
     const connection = new Connection(endpoint, 'confirmed');
     console.log('Connecting to cluster ' + endpoint)
     if (!fs.existsSync('authority.json')) {
