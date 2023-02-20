@@ -5,3 +5,7 @@ sleep 5s
 solana program deploy bin/mango.so --program-id bin/mango.json
 solana program deploy bin/serum_dex.so --program-id bin/serum_dex.json
 solana program deploy bin/pyth_mock.so --program-id bin/pyth_mock.json
+# idle waiting for abort from user
+( trap exit SIGINT ; read -r -d '' _ </dev/tty ) ## wait for Ctrl-C
+
+pkill -9 solana
