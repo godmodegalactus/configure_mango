@@ -574,7 +574,7 @@ export class MangoUtils {
         const spotMarkets = Array.from(mangoCookie.tokens).map(x => {
 
             const spotMarket: SpotMarketConfig = {
-                name: x[0] + 'USDC Top Market',
+                name: x[0] + 'USDC spot Market',
                 marketIndex: x[1].marketIndex,
                 publicKey: x[1].market.address,
                 asksKey: x[1].market.asksAddress,
@@ -597,6 +597,17 @@ export class MangoUtils {
             }
             return tokenConfig
         })
+
+        // quote token config
+        tokenConfigs.push(
+            {
+                decimals: 6,
+                mintKey: mangoCookie.usdcMint,
+                rootKey: mangoCookie.usdcRootBank,
+                nodeKeys: [mangoCookie.usdcNodeBank],
+                symbol: "USDC",
+            }
+        )
 
         const groupConfig: GroupConfig = {
             cluster,
