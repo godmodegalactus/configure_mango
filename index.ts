@@ -43,7 +43,7 @@ export async function main() {
     console.log('Configuring authority')
     const balance = await connection.getBalance(authority.publicKey)
     if (balance < 100) {
-        const signature = await connection.requestAirdrop(authority.publicKey, LAMPORTS_PER_SOL * 200);
+        const signature = await connection.requestAirdrop(authority.publicKey, LAMPORTS_PER_SOL * 100);
         await connection.confirmTransaction(signature, 'confirmed');
     }
     const beginSlot = await connection.getSlot();
@@ -77,8 +77,7 @@ export async function main() {
         fs.writeFileSync('authority.json', '[' + authority.secretKey.toString() + ']');
         console.log('Mango cookie created successfully')
 
-        const nbUsersStr = process.env.NB_USERS || "50";
-        const nbUsers : number = +nbUsersStr;
+        const nbUsers = Number(process.env.NB_USERS || "1");
         console.log('Creating ' + nbUsers + ' Users');
         const users = (await mangoUtils.createAndMintUsers(cookie, nbUsers, authority)).map(x => {
             const info = {};
@@ -88,7 +87,7 @@ export async function main() {
             return info;
         })
         console.log('created ' + nbUsers + ' Users');
-        fs.writeFileSync('accounts-20.json', JSON.stringify(users));
+        fs.writeFileSync('accounts.json', JSON.stringify(users));
 
     } finally {
         if (logId) {
