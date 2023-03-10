@@ -63,7 +63,7 @@ else
       "$validator_vote_account" \
       "$validator_stake_account" \
     --ledger "$ledgerDir" \
-    --cluster-type "mainnet-beta" \
+    --cluster-type "development" \
     $SPL_GENESIS_ARGS \
     $SOLANA_RUN_SH_GENESIS_ARGS
 fi

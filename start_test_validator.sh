@@ -4,12 +4,12 @@ solana-test-validator --account MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac bin/
 pid="$!"
 
 # handle ctrl-c
-trap cleanup INT SIGINT 2
+trap cleanup INT EXIT KILL 2
 
 cleanup()
 {
-	echo "cleanup $pid"
-	kill -9 $pid
+    echo "cleanup $pid"
+    kill -9 $pid
 }
 
 sleep 5
@@ -20,4 +20,3 @@ solana program deploy bin/pyth_mock.so -ul --program-id bin/pyth_mock.json
 
 # idle waiting for abort
 wait $pid
-
