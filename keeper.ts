@@ -212,6 +212,7 @@ async function processConsumeEvents(
   mangoGroup: MangoGroup,
   perpMarkets: PerpMarket[],
 ) {
+  let eventsConsumed = [];
   try {
     const eventQueuePks = perpMarkets.map((mkt) => mkt.eventQueue);
     const eventQueueAccts = await getMultipleAccounts(
@@ -237,7 +238,7 @@ async function processConsumeEvents(
       ({ perpMarket, eventQueue }) => {
         const events = eventQueue.getUnconsumedEvents();
         if (events.length === 0) {
-          // console.log('No events to consume');
+          // console.log('No events to consume', perpMarket.publicKey.toString(), perpMarket.eventQueue.toString());
           return promiseUndef();
         }
 
@@ -264,11 +265,13 @@ async function processConsumeEvents(
           perpMarket.eventQueue,
           Array.from(accounts)
           .map((s) => new PublicKey(s))
-          .sort(),          consumeEventsLimit,
+          .sort(),
+          consumeEventsLimit,
         );
 
         const transaction = new Transaction();
         transaction.add(consumeEventsInstruction);
+        eventsConsumed.push(perpMarket.eventQueue.toString());
 
         return connection.sendTransaction(transaction, [payer], {skipPreflight})
           .catch((err) => {
@@ -283,14 +286,13 @@ async function processConsumeEvents(
   } catch (err) {
     console.error('Error in processConsumeEvents', err);
   } finally {
-    console.timeLog('processConsumeEvents')
+    console.timeLog('processConsumeEvents', eventsConsumed);
     setTimeout(
       processConsumeEvents,
       consumeEventsInterval,
       mangoGroup,
       perpMarkets,
     );
-    console.timeLog('processConsumeEvents');
   }
 }
 
