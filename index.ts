@@ -1,4 +1,4 @@
-import { MangoUtils } from "./mango_utils";
+import { MangoUtils } from "./utils/mango_utils";
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import { sleep, Cluster } from "@blockworks-foundation/mango-client";
 import * as fs from 'fs';
@@ -8,9 +8,9 @@ import { readFileSync }  from 'fs';
 export function getProgramMap(cluster : Cluster): Map<String, String> {
     var file = "";
     if (cluster == "testnet") {
-        file = readFileSync('./testnet-program-name-to-id.json', 'utf-8');
+        file = readFileSync('./utils/testnet-program-name-to-id.json', 'utf-8');
     } else {
-        file = readFileSync('./genesis-program-name-to-id.json', 'utf-8');
+        file = readFileSync('./utils/genesis-program-name-to-id.json', 'utf-8');
     };
     return JSON.parse(file);
 }

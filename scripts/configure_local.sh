@@ -15,12 +15,13 @@ function ctrl_c() {
     exit 1
 }
 
+outDir=$PWD
+
 export RUST_LOG=${RUST_LOG:-solana=info,solana_runtime::message_processor=debug} # if RUST_LOG is unset, default to info
 export RUST_BACKTRACE=1
-dataDir=$PWD/config
-ledgerDir=$PWD/config/ledger
-
-SOLANA_RUN_SH_CLUSTER_TYPE=${SOLANA_RUN_SH_CLUSTER_TYPE:-development}
+dataDir=$outDir/config
+ledgerDir=$outDir/config/ledger
+binDir=$(dirname $0)/../bin
 
 set -x
 if ! solana address; then
@@ -49,10 +50,6 @@ fi
 if [[ -e "$ledgerDir"/genesis.bin || -e "$ledgerDir"/genesis.tar.bz2 ]]; then
   echo "Use existing genesis"
 else
-  if [[ -r spl-genesis-args.sh ]]; then
-    SPL_GENESIS_ARGS=$(cat spl-genesis-args.sh)
-  fi
-
   echo $SPL_GENESIS_ARGS
   # shellcheck disable=SC2086
   solana-genesis \
@@ -64,7 +61,14 @@ else
       "$validator_stake_account" \
     --ledger "$ledgerDir" \
     --cluster-type "development" \
-    $SPL_GENESIS_ARGS \
+    --bpf-program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA BPFLoader2111111111111111111111111111111111 $binDir/spl_token-3.5.0.so \
+    --bpf-program Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo BPFLoader1111111111111111111111111111111111 $binDir/spl_memo-1.0.0.so \
+    --bpf-program MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr BPFLoader2111111111111111111111111111111111 $binDir/spl_memo-3.0.0.so \
+    --bpf-program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL BPFLoader2111111111111111111111111111111111 $binDir/spl_associated-token-account-1.1.1.so \
+    --bpf-program Feat1YXHhH6t1juaWF74WLcfv4XoNocjXA6sPWHNgAse BPFLoader2111111111111111111111111111111111 $binDir/spl_feature-proposal-1.0.0.so \
+    --bpf-program DGKy8w8RtRsWB48qHa4yCd3AeP5uv4m3Qn7LU8z93RWV BPFLoader2111111111111111111111111111111111 $binDir/mango.so \
+    --bpf-program 3WAiypER8fm6vHjUPRiigGifq6ueSY645aYGH5Jj14pU BPFLoader2111111111111111111111111111111111 $binDir/serum_dex.so \
+    --bpf-program EoUiQKGpM4jsdb5oRnYnuWMaE4Gcey72QjEBbFxhk23C BPFLoader2111111111111111111111111111111111 $binDir/pyth_mock.so \
     $SOLANA_RUN_SH_GENESIS_ARGS
 fi
 
