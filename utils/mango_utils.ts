@@ -635,6 +635,56 @@ export class MangoUtils {
         return config.toJson();
     }
 
+    async json2Cookie(json: any, cluster: Cluster) : Promise<MangoCookie> {
+        const clusterConfig = new MangoConfig(json)
+        const group = clusterConfig.getGroup(cluster, cluster);
+        let mangoCookie: MangoCookie = {
+            mangoGroup: null,
+            signerKey: null,
+            mangoCache: null,
+            usdcRootBank: null,
+            usdcNodeBank: null,
+            usdcVault: null,
+            tokens: new Array<[String, MangoTokenData]>(),
+            usdcMint: null,
+            MSRM: null,
+        };
+        const mangoGroup = await this.mangoClient.getMangoGroup(group.publicKey);
+
+        let quoteToken = mangoGroup.getQuoteTokenInfo();
+        const quoteRootBankIndex = await mangoGroup.getRootBankIndex(quoteToken.rootBank);
+        const rootBanks = await (await mangoGroup.loadRootBanks(this.conn));
+        const quoteRootBank = rootBanks[quoteRootBankIndex];
+        const quoteNodeBanks = await quoteRootBank.loadNodeBanks(this.conn);
+
+        mangoCookie.mangoGroup = group.publicKey;
+        mangoCookie.mangoCache = mangoGroup.mangoCache;
+        mangoCookie.usdcRootBank = quoteToken.rootBank;
+        mangoCookie.usdcNodeBank = quoteNodeBanks[0].publicKey;
+        mangoCookie.usdcVault = quoteNodeBanks[0].vault;
+        mangoCookie.usdcMint = mangoGroup.getQuoteTokenInfo().mint;
+        const rootBanksF = rootBanks.filter(x => x != undefined);
+        mangoCookie.tokens = mangoGroup.tokens.map((x, index) => {
+            if (x.rootBank.equals(PublicKey.default)) {
+                return ["", null]
+            }
+            let rootBank = rootBanksF.find(y => y.publicKey.equals(x.rootBank))
+            let tokenData : MangoTokenData = {
+                market: null,
+                marketIndex: index,
+                mint: x.mint,
+                nbDecimals: 6,
+                rootBank: x.rootBank,
+                nodeBank: rootBank.nodeBanks[0],
+                perpMarket: null,
+                priceOracle: null,
+                startingPrice: 0
+            };
+            return ["", tokenData]
+        })
+        return mangoCookie
+    }
+
     async createUser(
         mangoCookie, 
         mangoGroup: mango_client_v3.MangoGroup, 
@@ -685,6 +735,10 @@ export class MangoUtils {
         await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
         for (const tokenIte of mangoCookie.tokens)
         {
+            if (tokenIte[1] === null)
+            {
+                continue;
+            }
             const marketIndex = tokenIte[1].marketIndex;
             
             const deposit = makeDepositInstruction(
@@ -713,8 +767,8 @@ export class MangoUtils {
     public async createAndMintUsers(mangoCookie: MangoCookie, nbUsers: number, authority : Keypair): Promise<MangoUser[]> {
         const mangoGroup = await this.getMangoGroup(mangoCookie)
         const rootBanks = await mangoGroup.loadRootBanks(this.conn)
-        const nodeBanksList = await Promise.all(rootBanks.filter(x => x != undefined).map(x => x.loadNodeBanks(this.conn)))
-        const nodeBanks = nodeBanksList.map(x => x[0]);
+        const nodeBanksList = await Promise.all(rootBanks.map(x => x != undefined ? x.loadNodeBanks(this.conn): Promise.resolve(undefined)))
+        const nodeBanks = nodeBanksList.map(x => x!=undefined ? x[0] : undefined);
         const usdcAcc = await this.mintUtils.createTokenAccount(mangoCookie.usdcMint, this.authority, this.authority.publicKey);
         await splToken.mintTo(
             this.conn,
@@ -726,6 +780,10 @@ export class MangoUtils {
         )
         const tmpAccounts : PublicKey []= new Array(mangoCookie.tokens.length)
         for (const tokenIte of mangoCookie.tokens) {
+            if (tokenIte[1] === null)
+            {
+                continue;
+            }
             const acc = await this.mintUtils.createTokenAccount(tokenIte[1].mint, this.authority, this.authority.publicKey);
             await splToken.mintTo(
                 this.conn,
@@ -737,13 +795,17 @@ export class MangoUtils {
             )
             tmpAccounts[tokenIte[1].marketIndex] = acc
         }
-        // create users
-        // let users : MangoUser[] = [];
-        // for ( let i=0 ; i< nbUsers ; ++i ){
-        //     let user = await this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts, authority);
-        //     users.push(user)
-        // }
-        let users = await Promise.all( [...Array(nbUsers)].map(_x => this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts, authority)));
+        
+        // create in batches of 10
+        let users : MangoUser[] = [];
+        for (let i=0; i<Math.floor((nbUsers/10)); ++i) {
+            let users_batch = await Promise.all( [...Array(10)].map(_x => this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts, authority)));
+            users = users.concat(users_batch)
+        }
+        if (nbUsers%10 != 0) {
+            let last_batch = await Promise.all( [...Array(nbUsers%10)].map(_x => this.createUser(mangoCookie, mangoGroup, usdcAcc, rootBanks, nodeBanks, tmpAccounts, authority)));
+            users = users.concat(last_batch)
+        }
         return users;
     }
 }

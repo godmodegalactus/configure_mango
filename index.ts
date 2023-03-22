@@ -1,19 +1,8 @@
 import { MangoUtils } from "./utils/mango_utils";
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import { sleep, Cluster } from "@blockworks-foundation/mango-client";
+import { getProgramMap } from "./utils/config"
 import * as fs from 'fs';
-import { web3 } from "@project-serum/anchor";
-import { readFileSync }  from 'fs';
-
-export function getProgramMap(cluster : Cluster): Map<String, String> {
-    var file = "";
-    if (cluster == "testnet") {
-        file = readFileSync('./utils/testnet-program-name-to-id.json', 'utf-8');
-    } else {
-        file = readFileSync('./utils/genesis-program-name-to-id.json', 'utf-8');
-    };
-    return JSON.parse(file);
-}
 
 export async function main() {
     
@@ -21,7 +10,7 @@ export async function main() {
     const cluster = (process.env.CLUSTER || 'localnet') as Cluster;
 
     const programNameToId = getProgramMap(cluster);
-    const endpoint = process.env.ENDPOINT_URL || 'http://127.0.0.1:8899';
+    const endpoint = process.env.ENDPOINT_URL || 'http://0.0.0.0:8899';
     const connection = new Connection(endpoint, 'confirmed');
     console.log('Connecting to cluster ' + endpoint)
     if (!fs.existsSync('authority.json')) {
