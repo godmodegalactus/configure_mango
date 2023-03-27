@@ -28,9 +28,19 @@ To configure mango
 yarn ts-node index.ts
 ```
 
-To run mango keeper
+To run mango keeper (deprecated)
 ```sh
 yarn ts-node keeper.ts
+```
+
+To create 50 users and store in the file accounts.json
+```sh
+ts-node create-users.ts 50 accounts.json
+```
+
+To refund users in account file with some sols
+```sh
+ts-node refund_users.ts accounts.json 
 ```
 
 Pyth oracle is a mock it is a program which will just rewrite an account with a binary data.

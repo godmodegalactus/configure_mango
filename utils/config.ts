@@ -1,5 +1,17 @@
 
 import { GroupConfig, OracleConfig, PerpMarketConfig, SpotMarketConfig, TokenConfig, Cluster } from '@blockworks-foundation/mango-client';
+import { readFileSync }  from 'fs';
+
+
+export function getProgramMap(cluster : Cluster): Map<String, String> {
+  var file = "";
+  if (cluster == "testnet") {
+      file = readFileSync('./utils/testnet-program-name-to-id.json', 'utf-8');
+  } else {
+      file = readFileSync('./utils/genesis-program-name-to-id.json', 'utf-8');
+  };
+  return JSON.parse(file);
+}
 
 export class Config {
     public cluster_urls: Record<Cluster, string>;
@@ -9,7 +21,6 @@ export class Config {
         this.cluster_urls = cluster_urls;
         this.groups = groups;
     }
-
 
     oracleConfigToJson(o: OracleConfig): any {
         return {
