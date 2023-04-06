@@ -12,6 +12,8 @@ export async function main() {
     const programNameToId = getProgramMap(cluster);
     const endpoint = process.env.ENDPOINT_URL || 'http://0.0.0.0:8899';
     const connection = new Connection(endpoint, 'confirmed');
+
+    const nbUsers = Number(process.env.NB_USERS || "1");
     console.log('Connecting to cluster ' + endpoint)
     if (!fs.existsSync('authority.json')) {
         //create an authority.json
@@ -31,8 +33,10 @@ export async function main() {
 
     console.log('Configuring authority')
     const balance = await connection.getBalance(authority.publicKey)
-    if (balance < 100 * LAMPORTS_PER_SOL) {
-        const signature = await connection.requestAirdrop(authority.publicKey, LAMPORTS_PER_SOL * 100);
+    console.log('Authority balance is : ' + balance);
+    if (balance < (nbUsers + 100) * LAMPORTS_PER_SOL) {
+        console.log('Balance too low airdropping ' + (nbUsers + 100) * LAMPORTS_PER_SOL + 'SOLs')
+        const signature = await connection.requestAirdrop(authority.publicKey, (nbUsers + 100) * LAMPORTS_PER_SOL);
         await connection.confirmTransaction(signature, 'confirmed');
     }
     const beginSlot = await connection.getSlot();
@@ -65,8 +69,6 @@ export async function main() {
         fs.writeFileSync('ids.json', JSON.stringify(json, null, 2));
         fs.writeFileSync('authority.json', '[' + authority.secretKey.toString() + ']');
         console.log('Mango cookie created successfully')
-
-        const nbUsers = Number(process.env.NB_USERS || "1");
         console.log('Creating ' + nbUsers + ' Users');
         const users = (await mangoUtils.createAndMintUsers(cookie, nbUsers, authority)).map(x => {
             const info = {};
