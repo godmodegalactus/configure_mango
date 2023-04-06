@@ -31,7 +31,7 @@ export async function main() {
 
     console.log('Configuring authority')
     const balance = await connection.getBalance(authority.publicKey)
-    if (balance < 100) {
+    if (balance < 100 * LAMPORTS_PER_SOL) {
         const signature = await connection.requestAirdrop(authority.publicKey, LAMPORTS_PER_SOL * 100);
         await connection.confirmTransaction(signature, 'confirmed');
     }
