@@ -1,7 +1,7 @@
 #!/bin/bash
 
 binDir=$(dirname $0)/../bin
-solana-test-validator --account MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac $binDir/mango-mint.json &
+solana-test-validator --account MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac $binDir/mango-mint.json --bpf-program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV $binDir/spl_noop.so &
 pid="$!"
 
 # handle ctrl-c
