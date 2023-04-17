@@ -66,6 +66,9 @@ else
     --bpf-program DGKy8w8RtRsWB48qHa4yCd3AeP5uv4m3Qn7LU8z93RWV BPFLoader2111111111111111111111111111111111 $binDir/mango.so \
     --bpf-program 3WAiypER8fm6vHjUPRiigGifq6ueSY645aYGH5Jj14pU BPFLoader2111111111111111111111111111111111 $binDir/serum_dex.so \
     --bpf-program EoUiQKGpM4jsdb5oRnYnuWMaE4Gcey72QjEBbFxhk23C BPFLoader2111111111111111111111111111111111 $binDir/pyth_mock.so \
+    --bpf-program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV BPFLoader2111111111111111111111111111111111 $binDir/spl_noop.so \
+    --bpf-program Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo BPFLoader1111111111111111111111111111111111 $binDir/spl_memo-1.0.0.so \
+    --bpf-program MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr BPFLoader2111111111111111111111111111111111 $binDir/spl_memo-3.0.0.so \
     $SOLANA_RUN_SH_GENESIS_ARGS
 fi
 
