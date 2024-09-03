@@ -73,6 +73,11 @@ export interface MangoUser {
     mangoAddress: PublicKey,
 }
 
+export interface MangoUserId {
+    pubkey: PublicKey,
+    mangoAddress: PublicKey,
+}
+
 export class MangoUtils {
     private conn: Connection;
     private serumUtils: SerumUtils;
@@ -385,6 +390,8 @@ export class MangoUtils {
         
         const transaction = new Transaction();
         transaction.add(instruction);
+        let hash = await this.conn.getRecentBlockhash();
+        transaction.recentBlockhash = hash.blockhash;
 
         await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed');
         //await sendAndConfirmTransaction(this.conn, transaction, additionalSigners);
@@ -727,12 +734,9 @@ export class MangoUtils {
             usdcAcc,
             new BN(10_000_000_000),
         );
-        const blockHashInfo = await this.conn.getLatestBlockhashAndContext();
-        const transaction = new Transaction()
+        let transaction = new Transaction()
             .add(depositUsdcIx)
-        transaction.recentBlockhash = blockHashInfo.value.blockhash;
-        transaction.feePayer = this.authority.publicKey;
-        await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
+            
         for (const tokenIte of mangoCookie.tokens)
         {
             if (tokenIte[1] === null)
@@ -753,9 +757,19 @@ export class MangoUtils {
                 fundingAccounts[marketIndex],
                 new BN(1_000_000_000),
             );
+            transaction.add(deposit)
+            
+            if (transaction.instructions.length > 4) {
+                const blockHashInfo = await this.conn.getLatestBlockhashAndContext();
+                transaction.recentBlockhash = blockHashInfo.value.blockhash;
+                transaction.feePayer = this.authority.publicKey;
+                await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
+                transaction = new Transaction();
+            }
+        }
+
+        if (transaction.instructions.length > 0) {
             const blockHashInfo = await this.conn.getLatestBlockhashAndContext();
-            const transaction = new Transaction()
-                .add(deposit)
             transaction.recentBlockhash = blockHashInfo.value.blockhash;
             transaction.feePayer = this.authority.publicKey;
             await this.mangoClient.sendTransaction(transaction, this.authority, [], 3600, 'confirmed')
@@ -807,5 +821,46 @@ export class MangoUtils {
             users = users.concat(last_batch)
         }
         return users;
+    }
+
+    public async refundUsers(mangoCookie: MangoCookie, users: MangoUser[], authority: Keypair ) {
+        let authority_token_data = await this.mintUtils.getTokenAccounts(authority.publicKey);
+        let usdc_token_data = authority_token_data.find(x => x.mint == mangoCookie.usdcMint);
+        for (let token of mangoCookie.tokens) {
+                
+        }
+
+        for (let user of users) {
+            let token_data = await this.mintUtils.getTokenAccounts(user.kp.publicKey);
+
+            for (let token of mangoCookie.tokens) {
+                
+            }
+        }
+
+    }
+
+    public async printMangoAccounts(mangoCookie: MangoCookie, users: MangoUserId[]) {
+        
+        for (let user of users) {
+            if (user === undefined || user.mangoAddress === undefined) {
+                console.log('undefined user or user mango address');
+                continue;
+            }
+            let sol_balance = await this.conn.getAccountInfo(user.pubkey);
+            let mango_account_data = await this.conn.getAccountInfo(user.mangoAddress);
+
+            let mango_account : mango_client_v3.MangoAccount = mango_client_v3.MangoAccountLayout.decode(mango_account_data.data);
+            console.log("user " + user.pubkey.toString() + " has " + sol_balance.lamports  +  " lamports");
+            console.log("deposits");
+            for (let amount of mango_account.deposits) {
+                console.log(amount.toNumber().toString())
+            }
+            console.log("borrows");
+            for (let amount of mango_account.borrows) {
+                console.log(amount.toNumber().toString())
+            }
+            console.log("\n\n");
+        }
     }
 }

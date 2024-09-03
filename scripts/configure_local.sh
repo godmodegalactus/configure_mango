@@ -92,6 +92,7 @@ args=(
   --no-wait-for-vote-to-start-leader
   --no-os-network-limits-test
   --allow-private-addr
+  --geyser-plugin-config $(dirname $0)/config.json
 )
 # shellcheck disable=SC2086
 solana-validator "${args[@]}" $SOLANA_RUN_SH_VALIDATOR_ARGS &
